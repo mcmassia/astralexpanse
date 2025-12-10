@@ -163,6 +163,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 heading: { levels: [1, 2, 3] },
                 codeBlock: false, // Using CodeBlockLowlight instead
                 horizontalRule: false, // Using custom HorizontalRule
+                link: false, // Using custom Link configuration
+                underline: false, // Using custom Underline configuration
             }),
             Placeholder.configure({
                 placeholder,

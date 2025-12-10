@@ -22,6 +22,75 @@ mermaid.initialize({
     },
 });
 
+/**
+ * Normalize Mermaid diagram code that may have lost newlines.
+ * This handles cases where the code is on a single line and inserts
+ * appropriate line breaks to make it valid Mermaid syntax.
+ */
+function normalizeMermaidCode(code: string): string {
+    // If the code already has newlines, it's probably fine
+    if (code.includes('\n')) {
+        return code;
+    }
+
+    const trimmed = code.trim();
+
+    // Match the diagram type declaration at the start
+    const graphMatch = trimmed.match(/^(graph\s+(?:TD|TB|BT|RL|LR)|flowchart\s+(?:TD|TB|BT|RL|LR))\s*/i);
+
+    if (graphMatch) {
+        const diagramType = graphMatch[1];
+        let rest = trimmed.substring(graphMatch[0].length);
+
+        // For graph/flowchart: Insert newlines after node closures followed by new nodes
+        // Pattern: closing bracket/brace/paren followed by space and node ID
+        // e.g., "] A[" or "} B{" or ") C(" or "] B -->" 
+        rest = rest
+            // After a complete connection ending with a node closure, before a new node starts
+            .replace(/([\]\}\)])(\s+)([A-Za-z_][A-Za-z0-9_]*\s*(?:[\[\{\(]|-->|--\||---|\.->|==>))/g, '$1\n    $3')
+            // Also handle when the arrow comes right after the closing bracket
+            .replace(/([\]\}\)])\s*(-->|--\||---|\.->|==>)\s*(\|[^|]*\|)?\s*([A-Za-z_][A-Za-z0-9_]*[\[\{\(])/g, '$1 $2 $3 $4');
+
+        return diagramType + '\n    ' + rest.trim();
+    }
+
+    // For sequence diagrams
+    const seqMatch = trimmed.match(/^(sequenceDiagram)\s*/i);
+    if (seqMatch) {
+        let rest = trimmed.substring(seqMatch[0].length);
+        rest = rest
+            .replace(/\s+(participant\s+)/gi, '\n    $1')
+            .replace(/\s+([A-Za-z_][A-Za-z0-9_]*\s*->>)/g, '\n    $1')
+            .replace(/\s+(Note\s+)/gi, '\n    $1')
+            .replace(/\s+(loop\s+|alt\s+|else\s*|end\b)/gi, '\n    $1');
+        return 'sequenceDiagram\n    ' + rest.trim();
+    }
+
+    // For class diagrams
+    const classMatch = trimmed.match(/^(classDiagram)\s*/i);
+    if (classMatch) {
+        let rest = trimmed.substring(classMatch[0].length);
+        rest = rest
+            .replace(/\s+(class\s+)/gi, '\n    $1')
+            .replace(/\s+([A-Za-z_][A-Za-z0-9_]*\s*(?:<\|--|-->|--\*|--o|--|\.\.>|\.\.))/g, '\n    $1');
+        return 'classDiagram\n    ' + rest.trim();
+    }
+
+    // For other diagram types, try a generic approach
+    // Split before common Mermaid keywords/patterns
+    const otherMatch = trimmed.match(/^(stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline)\s*/i);
+    if (otherMatch) {
+        const diagramType = otherMatch[1];
+        let rest = trimmed.substring(otherMatch[0].length);
+        // Generic: split on multiple spaces that precede identifiers
+        rest = rest.replace(/\s{2,}([A-Za-z_])/g, '\n    $1');
+        return diagramType + '\n    ' + rest.trim();
+    }
+
+    // Unknown format, return as-is
+    return code;
+}
+
 interface MermaidBlockViewProps {
     node: {
         textContent: string;
@@ -48,7 +117,9 @@ export function MermaidBlockView({ node, editor }: MermaidBlockViewProps) {
 
         try {
             const id = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            const { svg } = await mermaid.render(id, diagramCode);
+            // Normalize the code to restore newlines if they were lost
+            const normalizedCode = normalizeMermaidCode(diagramCode);
+            const { svg } = await mermaid.render(id, normalizedCode);
             setSvgContent(svg);
             setError(null);
         } catch (err) {
