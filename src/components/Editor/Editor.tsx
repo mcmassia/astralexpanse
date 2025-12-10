@@ -374,20 +374,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
         }
     }, [content, editor]);
 
-    // Cmd+K keyboard shortcut for link modal
+    // Cmd+K keyboard shortcut for link modal (only when editor is focused)
     useEffect(() => {
-        if (!editable) return;
+        if (!editable || !editor) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            // Only handle Cmd+K when the editor is focused
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k' && editor.isFocused) {
                 e.preventDefault();
+                e.stopPropagation();
                 setLinkModalOpen(true);
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [editable]);
+    }, [editable, editor]);
 
     // Handle click on mentions
     const handleEditorClick = useCallback((e: React.MouseEvent) => {

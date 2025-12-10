@@ -53,8 +53,13 @@ function App() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      // Cmd+K or Ctrl+K: Open quick search
+      // Cmd+K or Ctrl+K: Open quick search (only when NOT in editor/input)
+      // When in editor, let Editor.tsx handle it for link modal
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        if (isInput) {
+          // Let the Editor handle Cmd+K for link modal
+          return;
+        }
         e.preventDefault();
         if (!commandPaletteOpen) {
           openCommandPalette('quick');
