@@ -5,6 +5,8 @@ import { persist } from 'zustand/middleware';
 type SidebarTab = 'objects' | 'types' | 'search';
 type Theme = 'light' | 'dark' | 'system';
 type CommandPaletteMode = 'quick' | 'extended';
+type CalendarView = 'day' | 'threeDays' | 'week' | 'month';
+type AppSection = 'objects' | 'calendar';
 
 interface ExtendedSearchFilters {
     typeFilters: string[];
@@ -15,6 +17,9 @@ interface ExtendedSearchFilters {
 }
 
 interface UIStore {
+    // App section
+    currentSection: AppSection;
+
     // Sidebar
     sidebarOpen: boolean;
     sidebarTab: SidebarTab;
@@ -39,7 +44,13 @@ interface UIStore {
     // Settings modal
     settingsOpen: boolean;
 
+    // Calendar
+    calendarView: CalendarView;
+    selectedDate: Date;
+    calendarSidebarOpen: boolean;
+
     // Actions
+    setCurrentSection: (section: AppSection) => void;
     toggleSidebar: () => void;
     setSidebarTab: (tab: SidebarTab) => void;
     setSidebarWidth: (width: number) => void;
@@ -59,6 +70,18 @@ interface UIStore {
     // Settings
     openSettings: () => void;
     closeSettings: () => void;
+
+    // Calendar actions
+    setCalendarView: (view: CalendarView) => void;
+    setSelectedDate: (date: Date) => void;
+    goToToday: () => void;
+    goToPreviousDay: () => void;
+    goToNextDay: () => void;
+    goToPreviousWeek: () => void;
+    goToNextWeek: () => void;
+    goToPreviousMonth: () => void;
+    goToNextMonth: () => void;
+    toggleCalendarSidebar: () => void;
 }
 
 const defaultExtendedFilters: ExtendedSearchFilters = {
@@ -72,6 +95,7 @@ const defaultExtendedFilters: ExtendedSearchFilters = {
 export const useUIStore = create<UIStore>()(
     persist(
         (set) => ({
+            currentSection: 'objects',
             sidebarOpen: true,
             sidebarTab: 'objects',
             sidebarWidth: 280,
@@ -89,6 +113,12 @@ export const useUIStore = create<UIStore>()(
             // Settings
             settingsOpen: false,
 
+            // Calendar defaults
+            calendarView: 'day',
+            selectedDate: new Date(),
+            calendarSidebarOpen: true,
+
+            setCurrentSection: (section) => set({ currentSection: section }),
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
             setSidebarTab: (tab) => set({ sidebarTab: tab }),
             setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(400, width)) }),
@@ -133,6 +163,42 @@ export const useUIStore = create<UIStore>()(
             // Settings
             openSettings: () => set({ settingsOpen: true }),
             closeSettings: () => set({ settingsOpen: false }),
+
+            // Calendar
+            setCalendarView: (view) => set({ calendarView: view }),
+            setSelectedDate: (date) => set({ selectedDate: date }),
+            goToToday: () => set({ selectedDate: new Date() }),
+            goToPreviousDay: () => set((s) => {
+                const prev = new Date(s.selectedDate);
+                prev.setDate(prev.getDate() - 1);
+                return { selectedDate: prev };
+            }),
+            goToNextDay: () => set((s) => {
+                const next = new Date(s.selectedDate);
+                next.setDate(next.getDate() + 1);
+                return { selectedDate: next };
+            }),
+            goToPreviousWeek: () => set((s) => {
+                const prev = new Date(s.selectedDate);
+                prev.setDate(prev.getDate() - 7);
+                return { selectedDate: prev };
+            }),
+            goToNextWeek: () => set((s) => {
+                const next = new Date(s.selectedDate);
+                next.setDate(next.getDate() + 7);
+                return { selectedDate: next };
+            }),
+            goToPreviousMonth: () => set((s) => {
+                const prev = new Date(s.selectedDate);
+                prev.setMonth(prev.getMonth() - 1);
+                return { selectedDate: prev };
+            }),
+            goToNextMonth: () => set((s) => {
+                const next = new Date(s.selectedDate);
+                next.setMonth(next.getMonth() + 1);
+                return { selectedDate: next };
+            }),
+            toggleCalendarSidebar: () => set((s) => ({ calendarSidebarOpen: !s.calendarSidebarOpen })),
         }),
         {
             name: 'astral-ui-store',
@@ -140,6 +206,8 @@ export const useUIStore = create<UIStore>()(
                 sidebarOpen: state.sidebarOpen,
                 sidebarWidth: state.sidebarWidth,
                 theme: state.theme,
+                calendarView: state.calendarView,
+                calendarSidebarOpen: state.calendarSidebarOpen,
             }),
         }
     )

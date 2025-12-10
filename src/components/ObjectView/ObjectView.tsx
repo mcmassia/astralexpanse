@@ -4,6 +4,7 @@ import { useObjectStore, useSelectedObject } from '../../stores/objectStore';
 import { Editor } from '../Editor';
 import type { EditorRef } from '../Editor';
 import { PropertiesPanel } from './PropertiesPanel';
+import { ConfirmDialog, useToast } from '../common';
 import './ObjectView.css';
 
 export const ObjectView = () => {
@@ -14,9 +15,12 @@ export const ObjectView = () => {
     const deleteObject = useObjectStore(s => s.deleteObject);
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
+    const toast = useToast();
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleValue, setTitleValue] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const editorRef = useRef<EditorRef>(null);
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -74,10 +78,23 @@ export const ObjectView = () => {
         return { id: newObj.id, label: newObj.title };
     }, [createObject]);
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!selectedObject) return;
-        if (confirm(`¿Eliminar "${selectedObject.title}"?`)) {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!selectedObject) return;
+        const deletedTitle = selectedObject.title;
+        setIsDeleting(true);
+        try {
             await deleteObject(selectedObject.id);
+            toast.success('Objeto eliminado', `"${deletedTitle}" ha sido eliminado correctamente.`);
+        } catch (error) {
+            toast.error('Error al eliminar', 'No se pudo eliminar el objeto. Inténtalo de nuevo.');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -192,6 +209,18 @@ export const ObjectView = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={showDeleteConfirm}
+                title="Eliminar objeto"
+                message={`¿Estás seguro de que quieres eliminar "${selectedObject.title}"? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="danger"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setShowDeleteConfirm(false)}
+                isLoading={isDeleting}
+            />
         </div>
     );
 };

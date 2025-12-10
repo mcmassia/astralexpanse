@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import type { ObjectType, PropertyDefinition, PropertyType } from '../../types/object';
 import { useObjectStore } from '../../stores/objectStore';
+import { useToast } from '../common';
 import './TypeEditorModal.css';
 
 interface TypeEditorModalProps {
@@ -34,6 +35,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
     const createObjectType = useObjectStore(s => s.createObjectType);
     const updateObjectType = useObjectStore(s => s.updateObjectType);
     const objectTypes = useObjectStore(s => s.objectTypes);
+    const toast = useToast();
 
     const [name, setName] = useState('');
     const [namePlural, setNamePlural] = useState('');
@@ -104,13 +106,16 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
 
             if (editingType) {
                 await updateObjectType(editingType.id, typeData);
+                toast.success('Tipo actualizado', `"${typeData.name}" ha sido actualizado correctamente.`);
             } else {
                 await createObjectType(typeData);
+                toast.success('Tipo creado', `"${typeData.name}" ha sido creado correctamente.`);
             }
 
             onClose();
         } catch (err) {
             setError((err as Error).message);
+            toast.error('Error', (err as Error).message);
         } finally {
             setIsSaving(false);
         }

@@ -123,6 +123,16 @@ export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
     properties: [
       { id: 'priority', name: 'Prioridad', type: 'select', options: ['Baja', 'Media', 'Alta'] }
     ]
+  },
+  {
+    id: 'daily',
+    name: 'Nota Diaria',
+    namePlural: 'Notas Diarias',
+    icon: '📓',
+    color: '#22c55e',
+    properties: [
+      { id: 'date', name: 'Fecha', type: 'date', required: true }
+    ]
   }
 ];
 

@@ -4,6 +4,7 @@ import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { TypeEditorModal } from '../TypeEditor';
+import { useToast } from '../common';
 import type { ObjectType } from '../../types/object';
 import './Sidebar.css';
 
@@ -14,8 +15,9 @@ export const Sidebar = () => {
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
 
-    const { sidebarOpen, sidebarWidth, searchQuery, setSearchQuery } = useUIStore();
+    const { sidebarOpen, sidebarWidth, searchQuery, setSearchQuery, currentSection, setCurrentSection, setCalendarView, goToToday } = useUIStore();
     const { user, signOut } = useAuthStore();
+    const toast = useToast();
 
     const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['page']));
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
@@ -50,7 +52,22 @@ export const Sidebar = () => {
 
     const handleCreate = async (typeId: string) => {
         const type = objectTypes.find(t => t.id === typeId);
-        await createObject(typeId, `Nuevo ${type?.name || 'objeto'}`);
+        try {
+            const newObj = await createObject(typeId, `Nuevo ${type?.name || 'objeto'}`);
+            toast.success(`${type?.name || 'Objeto'} creado`, `"${newObj.title}" ha sido creado correctamente.`);
+        } catch (error) {
+            toast.error('Error al crear', `No se pudo crear el ${type?.name?.toLowerCase() || 'objeto'}.`);
+        }
+    };
+
+    const handleCalendarClick = () => {
+        setCurrentSection('calendar');
+        setCalendarView('day');
+        goToToday();
+    };
+
+    const handleObjectsClick = () => {
+        setCurrentSection('objects');
     };
 
     if (!sidebarOpen) return null;
@@ -72,6 +89,22 @@ export const Sidebar = () => {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="search-input"
                 />
+            </div>
+
+            {/* Section Tabs */}
+            <div className="sidebar-tabs">
+                <button
+                    className={`sidebar-tab ${currentSection === 'objects' ? 'active' : ''}`}
+                    onClick={handleObjectsClick}
+                >
+                    📄 Objetos
+                </button>
+                <button
+                    className={`sidebar-tab ${currentSection === 'calendar' ? 'active' : ''}`}
+                    onClick={handleCalendarClick}
+                >
+                    📅 Calendario
+                </button>
             </div>
 
             <nav className="sidebar-nav">

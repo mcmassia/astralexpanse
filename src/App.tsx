@@ -5,13 +5,16 @@ import { useObjectStore } from './stores/objectStore';
 import { useUIStore } from './stores/uiStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
+import { Calendar } from './components/Calendar';
+import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
+import { ToastProvider } from './components/common';
 import './index.css';
 
 function App() {
   const { user, isLoading: authLoading, error: authError, signIn, initialize: initAuth } = useAuthStore();
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
-  const { theme, openCommandPalette, commandPaletteOpen } = useUIStore();
+  const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar } = useUIStore();
 
   // Initialize auth listener
   useEffect(() => {
@@ -106,25 +109,47 @@ function App() {
     );
   }
 
+  // Render main content based on current section
+  const renderContent = () => {
+    if (objectsLoading) {
+      return (
+        <div className="loading-screen">
+          <div className="loading-spinner" />
+        </div>
+      );
+    }
+
+    switch (currentSection) {
+      case 'calendar':
+        return <Calendar />;
+      case 'objects':
+      default:
+        return <ObjectView />;
+    }
+  };
+
   // Main app
   return (
-    <div className="app">
-      <Sidebar />
-      <main className="app-main">
-        {objectsLoading ? (
-          <div className="loading-screen">
-            <div className="loading-spinner" />
-          </div>
-        ) : (
-          <ObjectView />
-        )}
-      </main>
+    <ToastProvider>
+      <div className="app">
+        <Sidebar />
+        <main className="app-main">
+          {renderContent()}
+        </main>
 
-      {/* Command Palette */}
-      <CommandPalette />
-    </div>
+        {/* Global Calendar Sidebar - Always visible, collapsible */}
+        <aside className={`app-calendar-sidebar ${calendarSidebarOpen ? 'open' : 'collapsed'}`}>
+          <MiniCalendar
+            collapsed={!calendarSidebarOpen}
+            onToggle={toggleCalendarSidebar}
+          />
+        </aside>
+
+        {/* Command Palette */}
+        <CommandPalette />
+      </div>
+    </ToastProvider>
   );
 }
 
 export default App;
-

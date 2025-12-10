@@ -104,6 +104,25 @@ body {
   position: relative;
 }
 
+/* Global Calendar Sidebar */
+.app-calendar-sidebar {
+  width: 280px;
+  border-left: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  overflow-y: auto;
+  transition: width 0.2s ease, opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.app-calendar-sidebar.collapsed {
+  width: 48px;
+  overflow: hidden;
+}
+
+.app-calendar-sidebar.collapsed .mini-calendar {
+  padding: 0.5rem;
+}
+
 /* Login screen */
 .login-screen {
   display: flex;

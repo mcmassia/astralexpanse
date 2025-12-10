@@ -51,7 +51,10 @@ export const CommandPalette = () => {
             category: 'navigation',
             shortcut: '⌘ T',
             action: () => {
-                // TODO: Navigate to today's daily note when calendar is implemented
+                const { setCurrentSection, goToToday, setCalendarView } = useUIStore.getState();
+                setCurrentSection('calendar');
+                setCalendarView('day');
+                goToToday();
                 closeCommandPalette();
             },
         },
@@ -61,7 +64,9 @@ export const CommandPalette = () => {
             icon: '📆',
             category: 'navigation',
             action: () => {
-                // TODO: Open month view when calendar is implemented
+                const { setCurrentSection, setCalendarView } = useUIStore.getState();
+                setCurrentSection('calendar');
+                setCalendarView('month');
                 closeCommandPalette();
             },
         },
@@ -71,7 +76,9 @@ export const CommandPalette = () => {
             icon: '🗓️',
             category: 'navigation',
             action: () => {
-                // TODO: Open week view when calendar is implemented
+                const { setCurrentSection, setCalendarView } = useUIStore.getState();
+                setCurrentSection('calendar');
+                setCalendarView('week');
                 closeCommandPalette();
             },
         },
