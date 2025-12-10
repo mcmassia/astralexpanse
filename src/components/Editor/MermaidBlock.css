@@ -1,0 +1,94 @@
+/* Mermaid Block Styles */
+.mermaid-block-wrapper {
+    margin: 1rem 0;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+.mermaid-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.mermaid-block-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.mermaid-block-toggle {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.mermaid-block-toggle:hover {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+}
+
+.mermaid-block-editor {
+    padding: 1rem;
+}
+
+.mermaid-block-editor .mermaid-code {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    outline: none;
+}
+
+.mermaid-block-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem;
+    min-height: 100px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.mermaid-block-preview:hover {
+    background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+.mermaid-block-preview svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.mermaid-block-error {
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.75rem;
+    color: var(--error);
+}
+
+/* Override mermaid SVG styles for dark theme */
+.mermaid-block-preview .nodeLabel {
+    color: var(--text-primary);
+}
+
+.mermaid-block-preview .edgeLabel {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}

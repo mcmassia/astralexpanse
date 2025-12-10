@@ -66,19 +66,143 @@
   border-radius: 4px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.9em;
+  color: #e06c75;
 }
 
 .editor-content .tiptap pre {
-  background: var(--bg-tertiary);
+  background: #1e1e2e;
   padding: 1rem;
   border-radius: 8px;
   overflow-x: auto;
   margin: 1rem 0;
+  border: 1px solid var(--border-subtle);
 }
 
 .editor-content .tiptap pre code {
   background: none;
   padding: 0;
+  color: #abb2bf;
+}
+
+/* Syntax highlighting - One Dark theme */
+.editor-content .tiptap pre .hljs-keyword,
+.editor-content .tiptap pre .hljs-selector-tag,
+.editor-content .tiptap pre .hljs-built_in {
+  color: #c678dd;
+}
+
+.editor-content .tiptap pre .hljs-string,
+.editor-content .tiptap pre .hljs-attr {
+  color: #98c379;
+}
+
+.editor-content .tiptap pre .hljs-number,
+.editor-content .tiptap pre .hljs-literal {
+  color: #d19a66;
+}
+
+.editor-content .tiptap pre .hljs-comment {
+  color: #5c6370;
+  font-style: italic;
+}
+
+.editor-content .tiptap pre .hljs-function,
+.editor-content .tiptap pre .hljs-title {
+  color: #61afef;
+}
+
+.editor-content .tiptap pre .hljs-variable,
+.editor-content .tiptap pre .hljs-params {
+  color: #e06c75;
+}
+
+.editor-content .tiptap pre .hljs-type,
+.editor-content .tiptap pre .hljs-class {
+  color: #e5c07b;
+}
+
+/* Tables */
+.editor-content .tiptap table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+}
+
+.editor-content .tiptap table td,
+.editor-content .tiptap table th {
+  border: 1px solid var(--border-subtle);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  min-width: 100px;
+  position: relative;
+}
+
+.editor-content .tiptap table th {
+  background: var(--bg-tertiary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editor-content .tiptap table tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--bg-tertiary) 30%, transparent);
+}
+
+.editor-content .tiptap table td.selectedCell,
+.editor-content .tiptap table th.selectedCell {
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+/* Table resize handle */
+.editor-content .tiptap .tableWrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.editor-content .tiptap .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent-primary);
+  cursor: col-resize;
+  z-index: 10;
+}
+
+/* Horizontal Rule */
+.editor-content .tiptap hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  margin: 2rem 0;
+}
+
+/* Links */
+.editor-content .tiptap a,
+.editor-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.editor-content .tiptap a::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  background: var(--accent-primary);
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+
+.editor-content .tiptap a:hover::after {
+  transform: scaleX(1);
 }
 
 /* Task list */
@@ -258,4 +382,71 @@
     transform: translateX(100%);
     opacity: 0;
   }
+}
+
+/* Math formulas (KaTeX) */
+.editor-content .tiptap .Tiptap-mathematics-editor,
+.editor-content .tiptap .Tiptap-mathematics-render {
+  background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 1.1em;
+}
+
+.editor-content .tiptap .Tiptap-mathematics-editor {
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--accent-primary);
+  min-width: 2em;
+}
+
+.editor-content .tiptap .Tiptap-mathematics-render {
+  cursor: pointer;
+}
+
+.editor-content .tiptap .Tiptap-mathematics-render:hover {
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+/* Block math */
+.editor-content .tiptap .Tiptap-mathematics-editor--block,
+.editor-content .tiptap .Tiptap-mathematics-render--block {
+  display: block;
+  text-align: center;
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: 1.25em;
+}
+
+/* Mermaid diagrams */
+.editor-content .tiptap pre[data-language="mermaid"] {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.mermaid-diagram {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid syntax hint in code block */
+.editor-content .tiptap pre[data-language="mermaid"]::before {
+  content: '◇ Diagrama Mermaid';
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-bottom: 0.5rem;
+  font-style: italic;
 }

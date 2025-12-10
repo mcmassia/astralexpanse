@@ -5,9 +5,26 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Mention from '@tiptap/extension-mention';
-import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { Link } from '@tiptap/extension-link';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { Underline } from '@tiptap/extension-underline';
+import { Typography } from '@tiptap/extension-typography';
+import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
+import { MathExtension } from '@aarkue/tiptap-math-extension';
+import { MermaidBlock } from './MermaidBlock';
+import { common, createLowlight } from 'lowlight';
+import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
+import { EditorToolbar } from './EditorToolbar';
+import 'katex/dist/katex.min.css';
 import './Editor.css';
+
+// Create lowlight instance with common languages
+const lowlight = createLowlight(common);
 
 // Custom Mention extension with parseHTML to persist mentions
 const CustomMention = Mention.extend({
@@ -70,6 +87,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 
     const onCreateObjectRef = useRef(onCreateObject);
     onCreateObjectRef.current = onCreateObject;
+
+    // State for Cmd+K link modal
+    const [linkModalOpen, setLinkModalOpen] = useState(false);
 
     const getSuggestionItems = useCallback(({ query }: { query: string }) => {
         const lowerQuery = query.toLowerCase().trim();
@@ -141,6 +161,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
         extensions: [
             StarterKit.configure({
                 heading: { levels: [1, 2, 3] },
+                codeBlock: false, // Using CodeBlockLowlight instead
+                horizontalRule: false, // Using custom HorizontalRule
             }),
             Placeholder.configure({
                 placeholder,
@@ -149,6 +171,31 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             TaskItem.configure({
                 nested: true,
             }),
+            Table.configure({
+                resizable: true,
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
+            Link.configure({
+                openOnClick: false,
+                HTMLAttributes: {
+                    class: 'editor-link',
+                },
+            }),
+            CodeBlockLowlight.configure({
+                lowlight,
+            }),
+            Underline,
+            Typography,
+            HorizontalRule,
+            MathExtension.configure({
+                evaluation: false,
+                katexOptions: {
+                    throwOnError: false,
+                },
+            }),
+            MermaidBlock,
             CustomMention.configure({
                 HTMLAttributes: {
                     class: 'mention',
@@ -325,6 +372,21 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
         }
     }, [content, editor]);
 
+    // Cmd+K keyboard shortcut for link modal
+    useEffect(() => {
+        if (!editable) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setLinkModalOpen(true);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [editable]);
+
     // Handle click on mentions
     const handleEditorClick = useCallback((e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -346,6 +408,13 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 
     return (
         <div className="editor-container" onClick={handleEditorClick}>
+            {editable && (
+                <EditorToolbar
+                    editor={editor}
+                    linkModalOpen={linkModalOpen}
+                    onLinkModalClose={() => setLinkModalOpen(false)}
+                />
+            )}
             <EditorContent editor={editor} className="editor-content" />
         </div>
     );
