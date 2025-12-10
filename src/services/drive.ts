@@ -1,5 +1,5 @@
 // Google Drive service for file sync
-import { getGoogleAccessToken } from './firebase';
+import { getGoogleAccessToken, isGoogleAccessTokenExpired } from './firebase';
 import type { AstralObject } from '../types/object';
 
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
@@ -9,11 +9,24 @@ const ASTRAL_FOLDER_NAME = 'Astral Expanse';
 let rootFolderId: string | null = null;
 const typeFolderCache: Record<string, string> = {};
 
+// Custom error for authentication issues
+export class DriveAuthError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'DriveAuthError';
+    }
+}
+
 // Helper for authenticated fetch
 const driveFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const token = getGoogleAccessToken();
     if (!token) {
-        throw new Error('No Google access token available. Please sign in again.');
+        throw new DriveAuthError('No Google access token available. Please reconnect to Drive.');
+    }
+
+    // Check if token is expired before making request
+    if (isGoogleAccessTokenExpired()) {
+        throw new DriveAuthError('Google access token has expired. Please reconnect to Drive.');
     }
 
     const response = await fetch(url, {
@@ -24,12 +37,49 @@ const driveFetch = async (url: string, options: RequestInit = {}): Promise<Respo
         },
     });
 
+    // Handle authentication errors specifically
+    if (response.status === 401 || response.status === 403) {
+        const error = await response.json().catch(() => ({}));
+        throw new DriveAuthError(error.error?.message || 'Authentication failed. Please reconnect to Drive.');
+    }
+
     if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.error?.message || `Drive API error: ${response.status}`);
     }
 
     return response;
+};
+
+// Check if Drive connection is valid
+export const checkDriveConnection = async (): Promise<{ connected: boolean; error?: string }> => {
+    const token = getGoogleAccessToken();
+    if (!token) {
+        return { connected: false, error: 'No token available' };
+    }
+
+    if (isGoogleAccessTokenExpired()) {
+        return { connected: false, error: 'Token expired' };
+    }
+
+    try {
+        // Make a lightweight API call to verify the token
+        const response = await fetch(`${DRIVE_API_BASE}/about?fields=user`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+            return { connected: true };
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            return { connected: false, error: 'Token invalid or expired' };
+        }
+
+        return { connected: false, error: `API error: ${response.status}` };
+    } catch (error) {
+        return { connected: false, error: 'Network error' };
+    }
 };
 
 // Get or create the root Astral Expanse folder
@@ -177,7 +227,8 @@ export const deleteFromDrive = async (fileId: string): Promise<void> => {
     await driveFetch(`${DRIVE_API_BASE}/files/${fileId}`, { method: 'DELETE' });
 };
 
-// Check if Drive token is valid
+// Check if Drive token is present (basic check)
 export const isDriveConnected = (): boolean => {
-    return !!getGoogleAccessToken();
+    return !!getGoogleAccessToken() && !isGoogleAccessTokenExpired();
 };
+

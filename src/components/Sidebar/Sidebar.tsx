@@ -4,6 +4,7 @@ import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { TypeEditorModal } from '../TypeEditor';
+import { DriveStatus } from '../DriveStatus';
 import { useToast } from '../common';
 import type { ObjectType } from '../../types/object';
 import './Sidebar.css';
@@ -190,6 +191,7 @@ export const Sidebar = () => {
                         <img src={user.photoURL} alt="" className="user-avatar" />
                     )}
                     <span className="user-name">{user?.displayName || user?.email}</span>
+                    <DriveStatus />
                 </div>
                 <button
                     className="sidebar-footer-btn signout"

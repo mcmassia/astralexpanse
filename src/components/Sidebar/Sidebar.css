@@ -312,3 +312,21 @@
 .sidebar-footer-btn.signout:hover {
     background: color-mix(in srgb, #ef4444 20%, transparent);
 }
+
+/* DriveStatus integration in sidebar footer */
+.sidebar-user .drive-status {
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.sidebar-user .drive-status .drive-reconnect-btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+.sidebar-user .drive-status-tooltip {
+    right: auto;
+    left: 0;
+    min-width: 200px;
+}

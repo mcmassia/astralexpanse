@@ -1,0 +1,75 @@
+/* Drive Status Component Styles */
+
+.drive-status {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: transparent;
+    cursor: default;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
+/* Percentage display */
+.drive-status-percentage {
+    font-weight: 600;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+/* Syncing indicator */
+.drive-status-syncing {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pending sync badge */
+.drive-status-badge {
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: var(--accent-primary);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Reconnect button */
+.drive-reconnect-btn {
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(231, 76, 60, 0.15);
+    color: var(--error);
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.drive-reconnect-btn:hover:not(:disabled) {
+    background: rgba(231, 76, 60, 0.25);
+}
+
+.drive-reconnect-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

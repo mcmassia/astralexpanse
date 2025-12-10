@@ -1,7 +1,7 @@
 // Firebase configuration and initialization
 import { initializeApp } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, reauthenticateWithPopup } from 'firebase/auth';
 import type { Auth, User } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
@@ -14,6 +14,9 @@ const firebaseConfig = {
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+// Google access tokens last ~1 hour (3600 seconds)
+const TOKEN_LIFETIME_MS = 55 * 60 * 1000; // 55 minutes to be safe
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -33,6 +36,14 @@ export const initializeFirebase = () => {
     return { app, auth, db };
 };
 
+// Store token with expiration time
+const storeAccessToken = (accessToken: string) => {
+    const expiresAt = Date.now() + TOKEN_LIFETIME_MS;
+    sessionStorage.setItem('googleAccessToken', accessToken);
+    sessionStorage.setItem('googleAccessTokenExpiresAt', expiresAt.toString());
+    return expiresAt;
+};
+
 export const signInWithGoogle = async () => {
     const { auth } = initializeFirebase();
     try {
@@ -41,9 +52,9 @@ export const signInWithGoogle = async () => {
         const credential = GoogleAuthProvider.credentialFromResult(result);
         const accessToken = credential?.accessToken;
 
-        // Store access token for Drive API calls
+        // Store access token with expiration for Drive API calls
         if (accessToken) {
-            sessionStorage.setItem('googleAccessToken', accessToken);
+            storeAccessToken(accessToken);
         }
 
         return result.user;
@@ -53,10 +64,40 @@ export const signInWithGoogle = async () => {
     }
 };
 
+// Refresh Google Access Token by re-authenticating
+export const refreshGoogleAccessToken = async (): Promise<{ success: boolean; expiresAt?: number }> => {
+    const { auth } = initializeFirebase();
+    const user = auth.currentUser;
+
+    if (!user) {
+        console.warn('[Auth] No user logged in, cannot refresh token');
+        return { success: false };
+    }
+
+    try {
+        console.log('[Auth] Attempting to refresh Google access token...');
+        const result = await reauthenticateWithPopup(user, googleProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const accessToken = credential?.accessToken;
+
+        if (accessToken) {
+            const expiresAt = storeAccessToken(accessToken);
+            console.log('[Auth] Token refreshed successfully, expires at:', new Date(expiresAt).toLocaleTimeString());
+            return { success: true, expiresAt };
+        }
+
+        return { success: false };
+    } catch (error) {
+        console.error('[Auth] Error refreshing Google access token:', error);
+        return { success: false };
+    }
+};
+
 export const signOutUser = async () => {
     const { auth } = initializeFirebase();
     await signOut(auth);
     sessionStorage.removeItem('googleAccessToken');
+    sessionStorage.removeItem('googleAccessTokenExpiresAt');
 };
 
 export const onAuthChange = (callback: (user: User | null) => void) => {
@@ -76,4 +117,16 @@ export const getFirestoreDb = () => {
 
 export const getGoogleAccessToken = () => {
     return sessionStorage.getItem('googleAccessToken');
+};
+
+export const getGoogleAccessTokenExpiration = (): number | null => {
+    const expiresAt = sessionStorage.getItem('googleAccessTokenExpiresAt');
+    return expiresAt ? parseInt(expiresAt, 10) : null;
+};
+
+export const isGoogleAccessTokenExpired = (): boolean => {
+    const expiresAt = getGoogleAccessTokenExpiration();
+    if (!expiresAt) return true;
+    // Consider expired 5 minutes before actual expiration
+    return Date.now() > (expiresAt - 5 * 60 * 1000);
 };

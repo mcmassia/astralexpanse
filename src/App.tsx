@@ -3,18 +3,21 @@ import { useEffect } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useObjectStore } from './stores/objectStore';
 import { useUIStore } from './stores/uiStore';
+import { useDriveStore } from './stores/driveStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
 import { Calendar } from './components/Calendar';
 import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
 import { ToastProvider } from './components/common';
+import { getGoogleAccessTokenExpiration } from './services/firebase';
 import './index.css';
 
 function App() {
   const { user, isLoading: authLoading, error: authError, signIn, initialize: initAuth } = useAuthStore();
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
   const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar } = useUIStore();
+  const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
 
   // Initialize auth listener
   useEffect(() => {
@@ -22,12 +25,18 @@ function App() {
     return () => unsubscribe();
   }, [initAuth]);
 
-  // Initialize objects when user is authenticated
+  // Initialize objects and Drive state when user is authenticated
   useEffect(() => {
     if (user) {
       initObjects();
+
+      // Initialize Drive token expiration from stored value
+      const expiresAt = getGoogleAccessTokenExpiration();
+      if (expiresAt) {
+        setTokenExpiration(expiresAt);
+      }
     }
-  }, [user, initObjects]);
+  }, [user, initObjects, setTokenExpiration]);
 
   // Apply theme
   useEffect(() => {
@@ -153,3 +162,4 @@ function App() {
 }
 
 export default App;
+

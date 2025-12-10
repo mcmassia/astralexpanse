@@ -5,6 +5,8 @@ import type { AstralObject, ObjectType } from '../types/object';
 import { DEFAULT_OBJECT_TYPES } from '../types/object';
 import * as db from '../services/db';
 import * as drive from '../services/drive';
+import { DriveAuthError } from '../services/drive';
+import { useDriveStore } from './driveStore';
 
 interface ObjectStore {
     // State
@@ -190,6 +192,7 @@ export const useObjectStore = create<ObjectStore>()(
 
         syncObjectToDrive: async (idOrObject) => {
             const connected = drive.isDriveConnected();
+            const driveStore = useDriveStore.getState();
 
             // Accept either an id or a full object
             let obj: AstralObject | undefined;
@@ -206,7 +209,9 @@ export const useObjectStore = create<ObjectStore>()(
             console.log('[Drive Sync] Starting sync for:', id, 'Connected:', connected);
 
             if (!connected) {
-                console.log('[Drive Sync] Not connected to Drive, skipping');
+                console.log('[Drive Sync] Not connected to Drive, adding to pending');
+                driveStore.addPendingSync(id);
+                driveStore.setConnectionStatus('disconnected', 'Token expired or not available');
                 return;
             }
 
@@ -219,9 +224,18 @@ export const useObjectStore = create<ObjectStore>()(
             const typeName = objectType?.namePlural || obj.type;
             console.log('[Drive Sync] Syncing:', obj.title, 'Type:', typeName);
 
+            // Mark as syncing
+            driveStore.addPendingSync(id);
+            driveStore.setConnectionStatus('syncing');
+
             try {
                 const { fileId, revisionId } = await drive.syncObjectToDrive(obj, typeName);
                 console.log('[Drive Sync] Success! FileId:', fileId, 'RevisionId:', revisionId);
+
+                // Remove from pending
+                driveStore.removePendingSync(id);
+                driveStore.setConnectionStatus('connected');
+                driveStore.updateLastSync();
 
                 // Update with Drive info if changed
                 if (fileId !== obj.driveFileId || revisionId !== obj.driveRevisionId) {
@@ -235,7 +249,17 @@ export const useObjectStore = create<ObjectStore>()(
                 }
             } catch (error) {
                 console.error('[Drive Sync] Error:', error);
-                // Don't throw - Drive sync is non-critical
+
+                // Handle authentication errors specially
+                if (error instanceof DriveAuthError) {
+                    console.warn('[Drive Sync] Auth error - marking as disconnected');
+                    driveStore.setConnectionStatus('disconnected', error.message);
+                    // Keep pending sync so it can be retried after reconnection
+                } else {
+                    // For other errors, remove from pending but mark as error
+                    driveStore.removePendingSync(id);
+                    driveStore.setConnectionStatus('error', (error as Error).message);
+                }
             }
         },
 
