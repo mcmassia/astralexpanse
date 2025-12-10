@@ -125,3 +125,44 @@ export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
     ]
   }
 ];
+
+// Search result with match info for highlighting
+export interface SearchMatch {
+  objectId: string;
+  field: 'title' | 'content' | 'property' | 'tag';
+  matchStart: number;
+  matchEnd: number;
+  context: string; // Text snippet around match
+  propertyName?: string; // For property matches
+}
+
+export interface SearchResult {
+  object: AstralObject;
+  matches: SearchMatch[];
+  score: number; // Relevance score for ranking
+}
+
+// Saved query for reusable searches
+export interface SavedQuery {
+  id: string;
+  name: string;
+  query: string;
+  typeFilters: string[];
+  tagFilters: string[];
+  propertyFilters: Record<string, string>;
+  showBlocksOnly: boolean;
+  groupByType: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  isPinned: boolean;
+}
+
+// Command palette action types
+export interface CommandAction {
+  id: string;
+  label: string;
+  icon: string;
+  shortcut?: string;
+  category: 'navigation' | 'create' | 'settings' | 'help';
+  action: () => void;
+}

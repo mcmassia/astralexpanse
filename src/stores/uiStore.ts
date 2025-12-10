@@ -4,6 +4,15 @@ import { persist } from 'zustand/middleware';
 
 type SidebarTab = 'objects' | 'types' | 'search';
 type Theme = 'light' | 'dark' | 'system';
+type CommandPaletteMode = 'quick' | 'extended';
+
+interface ExtendedSearchFilters {
+    typeFilters: string[];
+    tagFilters: string[];
+    showBlocksOnly: boolean;
+    groupByType: boolean;
+    resultLimit: number;
+}
 
 interface UIStore {
     // Sidebar
@@ -18,8 +27,17 @@ interface UIStore {
     isCreateModalOpen: boolean;
     createModalType: string | null;
 
-    // Search
+    // Search (legacy sidebar search)
     searchQuery: string;
+
+    // Command Palette
+    commandPaletteOpen: boolean;
+    commandPaletteMode: CommandPaletteMode;
+    commandPaletteQuery: string;
+    extendedSearchFilters: ExtendedSearchFilters;
+
+    // Settings modal
+    settingsOpen: boolean;
 
     // Actions
     toggleSidebar: () => void;
@@ -29,7 +47,27 @@ interface UIStore {
     openCreateModal: (type?: string) => void;
     closeCreateModal: () => void;
     setSearchQuery: (query: string) => void;
+
+    // Command Palette actions
+    openCommandPalette: (mode?: CommandPaletteMode) => void;
+    closeCommandPalette: () => void;
+    setCommandPaletteQuery: (query: string) => void;
+    setExtendedSearchFilters: (filters: Partial<ExtendedSearchFilters>) => void;
+    toggleTypeFilter: (typeId: string) => void;
+    toggleTagFilter: (tag: string) => void;
+
+    // Settings
+    openSettings: () => void;
+    closeSettings: () => void;
 }
+
+const defaultExtendedFilters: ExtendedSearchFilters = {
+    typeFilters: [],
+    tagFilters: [],
+    showBlocksOnly: false,
+    groupByType: false,
+    resultLimit: 50,
+};
 
 export const useUIStore = create<UIStore>()(
     persist(
@@ -42,6 +80,15 @@ export const useUIStore = create<UIStore>()(
             createModalType: null,
             searchQuery: '',
 
+            // Command Palette defaults
+            commandPaletteOpen: false,
+            commandPaletteMode: 'quick',
+            commandPaletteQuery: '',
+            extendedSearchFilters: defaultExtendedFilters,
+
+            // Settings
+            settingsOpen: false,
+
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
             setSidebarTab: (tab) => set({ sidebarTab: tab }),
             setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(400, width)) }),
@@ -49,6 +96,43 @@ export const useUIStore = create<UIStore>()(
             openCreateModal: (type) => set({ isCreateModalOpen: true, createModalType: type || null }),
             closeCreateModal: () => set({ isCreateModalOpen: false, createModalType: null }),
             setSearchQuery: (query) => set({ searchQuery: query }),
+
+            // Command Palette
+            openCommandPalette: (mode = 'quick') => set({
+                commandPaletteOpen: true,
+                commandPaletteMode: mode,
+                commandPaletteQuery: '',
+            }),
+            closeCommandPalette: () => set({
+                commandPaletteOpen: false,
+                commandPaletteQuery: '',
+            }),
+            setCommandPaletteQuery: (query) => set({ commandPaletteQuery: query }),
+            setExtendedSearchFilters: (filters) => set((s) => ({
+                extendedSearchFilters: { ...s.extendedSearchFilters, ...filters },
+            })),
+            toggleTypeFilter: (typeId) => set((s) => {
+                const current = s.extendedSearchFilters.typeFilters;
+                const newFilters = current.includes(typeId)
+                    ? current.filter(t => t !== typeId)
+                    : [...current, typeId];
+                return {
+                    extendedSearchFilters: { ...s.extendedSearchFilters, typeFilters: newFilters },
+                };
+            }),
+            toggleTagFilter: (tag) => set((s) => {
+                const current = s.extendedSearchFilters.tagFilters;
+                const newFilters = current.includes(tag)
+                    ? current.filter(t => t !== tag)
+                    : [...current, tag];
+                return {
+                    extendedSearchFilters: { ...s.extendedSearchFilters, tagFilters: newFilters },
+                };
+            }),
+
+            // Settings
+            openSettings: () => set({ settingsOpen: true }),
+            closeSettings: () => set({ settingsOpen: false }),
         }),
         {
             name: 'astral-ui-store',
@@ -60,3 +144,4 @@ export const useUIStore = create<UIStore>()(
         }
     )
 );
+

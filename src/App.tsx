@@ -5,12 +5,13 @@ import { useObjectStore } from './stores/objectStore';
 import { useUIStore } from './stores/uiStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
+import { CommandPalette } from './components/CommandPalette';
 import './index.css';
 
 function App() {
   const { user, isLoading: authLoading, error: authError, signIn, initialize: initAuth } = useAuthStore();
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
-  const { theme } = useUIStore();
+  const { theme, openCommandPalette, commandPaletteOpen } = useUIStore();
 
   // Initialize auth listener
   useEffect(() => {
@@ -32,6 +33,44 @@ function App() {
       : theme;
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, [theme]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs (unless command palette)
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+      // Cmd+K or Ctrl+K: Open quick search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (!commandPaletteOpen) {
+          openCommandPalette('quick');
+        }
+        return;
+      }
+
+      // Cmd+Shift+P or Ctrl+Shift+P: Open extended search
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'p') {
+        e.preventDefault();
+        openCommandPalette('extended');
+        return;
+      }
+
+      // Don't process other shortcuts if in an input
+      if (isInput) return;
+
+      // Cmd+Shift+F or Ctrl+Shift+F: Open extended search (alternative)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+        e.preventDefault();
+        openCommandPalette('extended');
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [openCommandPalette, commandPaletteOpen]);
 
   // Loading state
   if (authLoading) {
@@ -80,8 +119,12 @@ function App() {
           <ObjectView />
         )}
       </main>
+
+      {/* Command Palette */}
+      <CommandPalette />
     </div>
   );
 }
 
 export default App;
+

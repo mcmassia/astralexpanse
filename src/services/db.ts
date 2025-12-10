@@ -15,10 +15,11 @@ import {
 } from 'firebase/firestore';
 import type { QueryConstraint, Unsubscribe } from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
-import type { AstralObject, ObjectType } from '../types/object';
+import type { AstralObject, ObjectType, SavedQuery } from '../types/object';
 
 const OBJECTS_COLLECTION = 'objects';
 const TYPES_COLLECTION = 'objectTypes';
+const QUERIES_COLLECTION = 'savedQueries';
 
 // Helper to convert Firestore timestamps
 const convertTimestamps = (data: Record<string, unknown>): AstralObject => {
@@ -201,3 +202,80 @@ export const updateBacklinks = async (objectId: string, newLinks: string[], oldL
         }
     }
 };
+
+// ============ SAVED QUERIES ============
+
+// Helper to convert SavedQuery timestamps
+const convertQueryTimestamps = (data: Record<string, unknown>): SavedQuery => {
+    return {
+        ...data,
+        createdAt: data.createdAt instanceof Timestamp
+            ? data.createdAt.toDate()
+            : new Date(data.createdAt as string),
+        updatedAt: data.updatedAt instanceof Timestamp
+            ? data.updatedAt.toDate()
+            : new Date(data.updatedAt as string),
+    } as SavedQuery;
+};
+
+export const createSavedQuery = async (queryData: Omit<SavedQuery, 'id' | 'createdAt' | 'updatedAt'>): Promise<SavedQuery> => {
+    const db = getFirestoreDb();
+    const docRef = doc(collection(db, QUERIES_COLLECTION));
+
+    const now = new Date();
+    const newQuery: SavedQuery = {
+        ...queryData,
+        id: docRef.id,
+        createdAt: now,
+        updatedAt: now,
+    };
+
+    await setDoc(docRef, {
+        ...newQuery,
+        createdAt: Timestamp.fromDate(now),
+        updatedAt: Timestamp.fromDate(now),
+    });
+
+    return newQuery;
+};
+
+export const getSavedQueries = async (): Promise<SavedQuery[]> => {
+    const db = getFirestoreDb();
+    const q = query(collection(db, QUERIES_COLLECTION), orderBy('updatedAt', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => convertQueryTimestamps(doc.data() as Record<string, unknown>));
+};
+
+export const updateSavedQuery = async (id: string, updates: Partial<SavedQuery>): Promise<void> => {
+    const db = getFirestoreDb();
+    const docRef = doc(db, QUERIES_COLLECTION, id);
+
+    await updateDoc(docRef, {
+        ...updates,
+        updatedAt: Timestamp.fromDate(new Date()),
+    });
+};
+
+export const deleteSavedQuery = async (id: string): Promise<void> => {
+    const db = getFirestoreDb();
+    await deleteDoc(doc(db, QUERIES_COLLECTION, id));
+};
+
+export const subscribeToSavedQueries = (
+    callback: (queries: SavedQuery[]) => void
+): Unsubscribe => {
+    const db = getFirestoreDb();
+    const q = query(collection(db, QUERIES_COLLECTION), orderBy('updatedAt', 'desc'));
+
+    return onSnapshot(q,
+        (snapshot) => {
+            const queries = snapshot.docs.map(doc => convertQueryTimestamps(doc.data() as Record<string, unknown>));
+            callback(queries);
+        },
+        (error) => {
+            console.error('[Firestore] Error in queries subscription:', error);
+        }
+    );
+};
+
