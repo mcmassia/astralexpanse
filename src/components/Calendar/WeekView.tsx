@@ -12,7 +12,7 @@ export const WeekView = () => {
 
     return (
         <div className="week-view">
-            {days.map((date, index) => (
+            {days.map((date) => (
                 <DayPanel
                     key={date.toISOString()}
                     date={date}

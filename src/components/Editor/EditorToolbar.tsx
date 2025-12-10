@@ -71,8 +71,7 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
 
     const insertMermaidBlock = () => {
         // Use the MermaidBlock extension command
-        // @ts-expect-error - Command added by MermaidBlock extension
-        editor.chain().focus().setMermaidBlock().run();
+        (editor.chain().focus() as any).setMermaidBlock().run();
     };
 
     const currentLinkUrl = editor.getAttributes('link').href || '';

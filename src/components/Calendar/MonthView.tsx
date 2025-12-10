@@ -1,7 +1,7 @@
 // Month View Component - Card grid for entire month
 import { useMemo } from 'react';
 import { useUIStore } from '../../stores/uiStore';
-import { getMonthGrid, isSameDay, MONTH_NAMES_SHORT } from './utils';
+import { getMonthGrid, MONTH_NAMES_SHORT } from './utils';
 import { DayPanel } from './DayPanel';
 import './Calendar.css';
 
@@ -53,18 +53,13 @@ export const MonthView = () => {
                 {/* Weeks */}
                 {weeks.map((week, weekIndex) => (
                     <div key={weekIndex} className="month-week">
-                        {week.map(date => {
-                            const isCurrentMonth = date.getMonth() === currentMonth;
-                            const isSelected = isSameDay(date, selectedDate);
-
-                            return (
-                                <DayPanel
-                                    key={date.toISOString()}
-                                    date={date}
-                                    compact
-                                />
-                            );
-                        })}
+                        {week.map(date => (
+                            <DayPanel
+                                key={date.toISOString()}
+                                date={date}
+                                compact
+                            />
+                        ))}
                     </div>
                 ))}
             </div>
