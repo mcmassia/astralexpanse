@@ -54,8 +54,12 @@ export interface PropertyDefinition {
   type: PropertyType;
   required?: boolean;
   options?: string[];              // For select/multiselect
-  relationTypeId?: string;         // For relation type
+  relationTypeId?: string;         // For relation type filter
   defaultValue?: PropertyValue;
+  // Two-way linked properties configuration
+  twoWayLinked?: boolean;          // Enable two-way linking
+  linkedTypeId?: string;           // Target object type ID for two-way link
+  linkedPropertyId?: string;       // Property ID in target type that receives back-reference
 }
 
 // Default object types

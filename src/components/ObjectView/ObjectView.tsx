@@ -28,10 +28,23 @@ export const ObjectView = () => {
         ? objectTypes.find(t => t.id === selectedObject.type)
         : null;
 
-    // Calculate backlinks reactively
+    // Calculate backlinks reactively (includes both content mentions and property relations)
     const backlinkedObjects = useMemo(() => {
         if (!selectedObject) return [];
-        return objects.filter(o => o.links?.includes(selectedObject.id));
+        return objects.filter(o => {
+            // Check content mentions (existing behavior)
+            if (o.links?.includes(selectedObject.id)) return true;
+
+            // Check property relations (new: relations in properties count as backlinks)
+            for (const propValue of Object.values(o.properties)) {
+                if (Array.isArray(propValue) && propValue.some(v =>
+                    typeof v === 'object' && v !== null && 'id' in v && v.id === selectedObject.id
+                )) {
+                    return true;
+                }
+            }
+            return false;
+        });
     }, [objects, selectedObject]);
 
     const handleTitleClick = () => {
@@ -175,6 +188,7 @@ export const ObjectView = () => {
                     object={selectedObject}
                     objectType={objectType}
                     onUpdate={(updates) => updateObject(selectedObject.id, updates)}
+                    onRelationClick={selectObject}
                 />
             )}
 

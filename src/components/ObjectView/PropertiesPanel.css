@@ -157,6 +157,25 @@
     font-weight: 500;
 }
 
+.relation-tag.clickable {
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.relation-tag.clickable:hover {
+    background: color-mix(in srgb, var(--type-color, #6366f1) 25%, transparent);
+    transform: translateY(-1px);
+}
+
+.relation-tag.clickable:focus {
+    outline: 2px solid var(--type-color, #6366f1);
+    outline-offset: 2px;
+}
+
+.relation-tag.clickable:active {
+    transform: translateY(0);
+}
+
 .relation-remove {
     background: none;
     border: none;

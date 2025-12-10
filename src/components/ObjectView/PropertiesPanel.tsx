@@ -8,9 +8,10 @@ interface PropertiesPanelProps {
     object: AstralObject;
     objectType: ObjectType;
     onUpdate: (updates: Partial<AstralObject>) => void;
+    onRelationClick?: (objectId: string) => void;
 }
 
-export const PropertiesPanel = ({ object, objectType, onUpdate }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick }: PropertiesPanelProps) => {
     const objects = useObjectStore(s => s.objects);
     const objectTypes = useObjectStore(s => s.objectTypes);
 
@@ -39,6 +40,7 @@ export const PropertiesPanel = ({ object, objectType, onUpdate }: PropertiesPane
                         onChange={(value) => handlePropertyChange(prop.id, value)}
                         objects={objects}
                         objectTypes={objectTypes}
+                        onRelationClick={onRelationClick}
                     />
                 ))}
             </div>
@@ -53,9 +55,10 @@ interface PropertyInputProps {
     onChange: (value: PropertyValue) => void;
     objects: AstralObject[];
     objectTypes: ObjectType[];
+    onRelationClick?: (objectId: string) => void;
 }
 
-const PropertyInput = ({ definition, value, onChange, objects, objectTypes }: PropertyInputProps) => {
+const PropertyInput = ({ definition, value, onChange, objects, objectTypes, onRelationClick }: PropertyInputProps) => {
     const renderInput = () => {
         switch (definition.type) {
             case 'text':
@@ -289,11 +292,27 @@ const PropertyInput = ({ definition, value, onChange, objects, objectTypes }: Pr
                                     const relObj = objects.find(o => o.id === rel.id);
                                     const relType = relObj ? objectTypes.find(t => t.id === relObj.type) : null;
                                     return (
-                                        <span key={rel.id} className="relation-tag" style={{ '--type-color': relType?.color || '#6366f1' } as React.CSSProperties}>
+                                        <span
+                                            key={rel.id}
+                                            className={`relation-tag ${onRelationClick ? 'clickable' : ''}`}
+                                            style={{ '--type-color': relType?.color || '#6366f1' } as React.CSSProperties}
+                                            onClick={() => onRelationClick?.(rel.id)}
+                                            role={onRelationClick ? 'button' : undefined}
+                                            tabIndex={onRelationClick ? 0 : undefined}
+                                            onKeyDown={(e) => {
+                                                if (onRelationClick && (e.key === 'Enter' || e.key === ' ')) {
+                                                    e.preventDefault();
+                                                    onRelationClick(rel.id);
+                                                }
+                                            }}
+                                        >
                                             {relType?.icon || '📄'} {rel.title}
                                             <button
                                                 className="relation-remove"
-                                                onClick={() => onChange(currentRelations.filter(r => r.id !== rel.id))}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onChange(currentRelations.filter(r => r.id !== rel.id));
+                                                }}
                                             >
                                                 ✕
                                             </button>

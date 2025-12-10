@@ -293,6 +293,75 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                                                     })}
                                                 </div>
                                             )}
+
+                                            {/* Two-way linking configuration */}
+                                            <div className="two-way-linking-section">
+                                                <label className="relation-type-option two-way-toggle">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={prop.twoWayLinked || false}
+                                                        onChange={e => {
+                                                            handleUpdateProperty(index, {
+                                                                twoWayLinked: e.target.checked,
+                                                                linkedTypeId: e.target.checked ? (prop.relationTypeId?.split(',')[0] || '') : undefined,
+                                                                linkedPropertyId: undefined
+                                                            });
+                                                        }}
+                                                    />
+                                                    <span>🔗 Enlace bidireccional</span>
+                                                </label>
+
+                                                {prop.twoWayLinked && (
+                                                    <div className="two-way-config">
+                                                        <div className="two-way-field">
+                                                            <label>Tipo destino:</label>
+                                                            <select
+                                                                value={prop.linkedTypeId || ''}
+                                                                onChange={e => {
+                                                                    handleUpdateProperty(index, {
+                                                                        linkedTypeId: e.target.value,
+                                                                        linkedPropertyId: ''
+                                                                    });
+                                                                }}
+                                                                className="two-way-select"
+                                                            >
+                                                                <option value="">Seleccionar tipo...</option>
+                                                                {objectTypes.map(t => (
+                                                                    <option key={t.id} value={t.id}>
+                                                                        {t.icon} {t.name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+
+                                                        {prop.linkedTypeId && (
+                                                            <div className="two-way-field">
+                                                                <label>Propiedad de enlace:</label>
+                                                                <select
+                                                                    value={prop.linkedPropertyId || ''}
+                                                                    onChange={e => {
+                                                                        handleUpdateProperty(index, {
+                                                                            linkedPropertyId: e.target.value
+                                                                        });
+                                                                    }}
+                                                                    className="two-way-select"
+                                                                >
+                                                                    <option value="">Seleccionar propiedad...</option>
+                                                                    {(() => {
+                                                                        const targetType = objectTypes.find(t => t.id === prop.linkedTypeId);
+                                                                        const relationProps = targetType?.properties?.filter(p => p.type === 'relation') || [];
+                                                                        return relationProps.map(p => (
+                                                                            <option key={p.id} value={p.id}>
+                                                                                {p.name}
+                                                                            </option>
+                                                                        ));
+                                                                    })()}
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 

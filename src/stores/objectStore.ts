@@ -105,6 +105,91 @@ export const useObjectStore = create<ObjectStore>()(
                     updates.links = newLinks;
                 }
 
+                // Handle two-way linked properties sync
+                if (updates.properties) {
+                    const objectType = get().objectTypes.find(t => t.id === currentObject.type);
+                    if (objectType) {
+                        for (const prop of objectType.properties) {
+                            if (prop.type === 'relation' && prop.twoWayLinked && prop.linkedTypeId && prop.linkedPropertyId) {
+                                const oldRelations = (currentObject.properties[prop.id] as { id: string; title: string }[]) || [];
+                                const newRelations = (updates.properties[prop.id] as { id: string; title: string }[]) || [];
+
+                                const oldIds = oldRelations.map(r => r.id);
+                                const newIds = newRelations.map(r => r.id);
+
+                                // Find added and removed relations
+                                const addedIds = newIds.filter(rid => !oldIds.includes(rid));
+                                const removedIds = oldIds.filter(rid => !newIds.includes(rid));
+
+                                // Add back-reference to newly linked objects
+                                for (const linkedId of addedIds) {
+                                    const linkedObj = get().objects.find(o => o.id === linkedId);
+                                    if (linkedObj && linkedObj.type === prop.linkedTypeId) {
+                                        const linkedPropValue = (linkedObj.properties[prop.linkedPropertyId] as { id: string; title: string }[]) || [];
+                                        const alreadyLinked = linkedPropValue.some(r => r.id === id);
+                                        if (!alreadyLinked) {
+                                            const updatedLinkedProp = [...linkedPropValue, { id, title: currentObject.title }];
+                                            // Update directly in DB to avoid recursive updates
+                                            await db.updateObject(linkedId, {
+                                                properties: {
+                                                    ...linkedObj.properties,
+                                                    [prop.linkedPropertyId]: updatedLinkedProp
+                                                }
+                                            });
+                                            // Update local state
+                                            set((state) => ({
+                                                objects: state.objects.map(o =>
+                                                    o.id === linkedId
+                                                        ? {
+                                                            ...o,
+                                                            properties: {
+                                                                ...o.properties,
+                                                                [prop.linkedPropertyId!]: updatedLinkedProp
+                                                            },
+                                                            updatedAt: new Date()
+                                                        }
+                                                        : o
+                                                ),
+                                            }));
+                                        }
+                                    }
+                                }
+
+                                // Remove back-reference from unlinked objects
+                                for (const unlinkedId of removedIds) {
+                                    const unlinkedObj = get().objects.find(o => o.id === unlinkedId);
+                                    if (unlinkedObj && unlinkedObj.type === prop.linkedTypeId) {
+                                        const unlinkedPropValue = (unlinkedObj.properties[prop.linkedPropertyId] as { id: string; title: string }[]) || [];
+                                        const updatedUnlinkedProp = unlinkedPropValue.filter(r => r.id !== id);
+                                        // Update directly in DB to avoid recursive updates
+                                        await db.updateObject(unlinkedId, {
+                                            properties: {
+                                                ...unlinkedObj.properties,
+                                                [prop.linkedPropertyId]: updatedUnlinkedProp
+                                            }
+                                        });
+                                        // Update local state
+                                        set((state) => ({
+                                            objects: state.objects.map(o =>
+                                                o.id === unlinkedId
+                                                    ? {
+                                                        ...o,
+                                                        properties: {
+                                                            ...o.properties,
+                                                            [prop.linkedPropertyId!]: updatedUnlinkedProp
+                                                        },
+                                                        updatedAt: new Date()
+                                                    }
+                                                    : o
+                                            ),
+                                        }));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 await db.updateObject(id, updates);
 
                 set((state) => ({
