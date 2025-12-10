@@ -1,0 +1,56 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+dist-ssr
+build
+.cache
+
+# Environment files (keep .env.example as template)
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+*.local
+
+# Firebase
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+firebaseServiceAccountKey.json
+*-firebase-adminsdk-*.json
+
+# API keys and secrets
+*.pem
+*.key
+secrets/
+.secrets
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
