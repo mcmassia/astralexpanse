@@ -60,6 +60,12 @@ export interface PropertyDefinition {
   twoWayLinked?: boolean;          // Enable two-way linking
   linkedTypeId?: string;           // Target object type ID for two-way link
   linkedPropertyId?: string;       // Property ID in target type that receives back-reference
+  // Computed/derived property configuration
+  computed?: boolean;              // Is this a computed/derived property?
+  computedFrom?: {
+    throughProperty: string;       // Property ID to traverse (e.g., "equipos")
+    collectProperty: string;       // Property ID to collect from traversed objects (e.g., "personas")
+  };
 }
 
 // Default object types

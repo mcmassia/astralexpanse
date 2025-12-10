@@ -95,12 +95,34 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
         setError(null);
 
         try {
+            // Clean properties - remove undefined values that Firestore rejects
+            const cleanedProperties = properties.filter(p => p.name.trim()).map(p => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const cleaned: any = {
+                    id: p.id,
+                    name: p.name,
+                    type: p.type,
+                };
+                if (p.required !== undefined) cleaned.required = p.required;
+                if (p.options !== undefined) cleaned.options = p.options;
+                if (p.relationTypeId !== undefined) cleaned.relationTypeId = p.relationTypeId;
+                if (p.defaultValue !== undefined) cleaned.defaultValue = p.defaultValue;
+                if (p.twoWayLinked !== undefined) cleaned.twoWayLinked = p.twoWayLinked;
+                if (p.linkedTypeId !== undefined) cleaned.linkedTypeId = p.linkedTypeId;
+                if (p.linkedPropertyId !== undefined) cleaned.linkedPropertyId = p.linkedPropertyId;
+                if (p.computed !== undefined) cleaned.computed = p.computed;
+                if (p.computedFrom !== undefined && p.computedFrom.throughProperty && p.computedFrom.collectProperty) {
+                    cleaned.computedFrom = p.computedFrom;
+                }
+                return cleaned as PropertyDefinition;
+            });
+
             const typeData = {
                 name: name.trim(),
                 namePlural: namePlural.trim() || `${name.trim()}s`,
                 icon,
                 color,
-                properties: properties.filter(p => p.name.trim()),
+                properties: cleanedProperties,
                 template,
             };
 
@@ -254,18 +276,20 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                                             <label className="relation-type-option">
                                                 <input
                                                     type="checkbox"
-                                                    checked={!prop.relationTypeId || prop.relationTypeId === 'any'}
+                                                    checked={prop.relationTypeId === undefined || prop.relationTypeId === 'any'}
                                                     onChange={e => {
                                                         if (e.target.checked) {
                                                             handleUpdateProperty(index, { relationTypeId: 'any' });
                                                         } else {
-                                                            handleUpdateProperty(index, { relationTypeId: '' });
+                                                            // Set to empty string to indicate user wants to select specific types
+                                                            // The list below will show when relationTypeId is not 'any' or undefined
+                                                            handleUpdateProperty(index, { relationTypeId: objectTypes[0]?.id || '' });
                                                         }
                                                     }}
                                                 />
                                                 <span>Cualquier tipo</span>
                                             </label>
-                                            {(!prop.relationTypeId || prop.relationTypeId === 'any') ? null : (
+                                            {(prop.relationTypeId === undefined || prop.relationTypeId === 'any') ? null : (
                                                 <div className="relation-types-list">
                                                     {objectTypes.map(t => {
                                                         const currentTypes = prop.relationTypeId?.split(',').map(s => s.trim()) || [];
@@ -362,6 +386,109 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                                                     </div>
                                                 )}
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Computed property configuration */}
+                                    {prop.type === 'relation' && (
+                                        <div className="computed-property-section">
+                                            <label className="relation-type-option computed-toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={prop.computed || false}
+                                                    onChange={e => {
+                                                        handleUpdateProperty(index, {
+                                                            computed: e.target.checked,
+                                                            computedFrom: e.target.checked ? { throughProperty: '', collectProperty: '' } : undefined
+                                                        });
+                                                    }}
+                                                />
+                                                <span>📊 Propiedad calculada</span>
+                                            </label>
+
+                                            {prop.computed && (
+                                                <div className="computed-config">
+                                                    <div className="computed-field">
+                                                        <label>A través de:</label>
+                                                        <select
+                                                            value={prop.computedFrom?.throughProperty || ''}
+                                                            onChange={e => {
+                                                                handleUpdateProperty(index, {
+                                                                    computedFrom: {
+                                                                        throughProperty: e.target.value,
+                                                                        collectProperty: prop.computedFrom?.collectProperty || ''
+                                                                    }
+                                                                });
+                                                            }}
+                                                            className="computed-select"
+                                                        >
+                                                            <option value="">Seleccionar propiedad...</option>
+                                                            {properties.filter(p => p.type === 'relation' && p.id !== prop.id && !p.computed).map(p => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    {prop.computedFrom?.throughProperty && (
+                                                        <div className="computed-field">
+                                                            <label>Recoger:</label>
+                                                            <select
+                                                                value={prop.computedFrom?.collectProperty || ''}
+                                                                onChange={e => {
+                                                                    handleUpdateProperty(index, {
+                                                                        computedFrom: {
+                                                                            throughProperty: prop.computedFrom?.throughProperty || '',
+                                                                            collectProperty: e.target.value
+                                                                        }
+                                                                    });
+                                                                }}
+                                                                className="computed-select"
+                                                            >
+                                                                <option value="">Seleccionar propiedad...</option>
+                                                                {(() => {
+                                                                    // Find the through property to get its target type
+                                                                    const throughProp = properties.find(p => p.id === prop.computedFrom?.throughProperty);
+                                                                    if (!throughProp) return null;
+
+                                                                    // Get target types - try relationTypeId first, then linkedTypeId for two-way links
+                                                                    let targetTypeIds: string[] = [];
+
+                                                                    if (throughProp.relationTypeId && throughProp.relationTypeId !== 'any') {
+                                                                        targetTypeIds = throughProp.relationTypeId.split(',').map(s => s.trim()).filter(Boolean);
+                                                                    } else if (throughProp.linkedTypeId) {
+                                                                        // Use linkedTypeId if relationTypeId is 'any' but two-way link is configured
+                                                                        targetTypeIds = [throughProp.linkedTypeId];
+                                                                    } else {
+                                                                        // If "Cualquier tipo" and no linkedTypeId, show all types' relation properties
+                                                                        targetTypeIds = objectTypes.map(t => t.id);
+                                                                    }
+
+                                                                    // Collect all relation properties from target types
+                                                                    const targetProps: { typeId: string; typeName: string; prop: typeof throughProp }[] = [];
+                                                                    for (const typeId of targetTypeIds) {
+                                                                        const targetType = objectTypes.find(t => t.id === typeId);
+                                                                        if (targetType) {
+                                                                            for (const tp of targetType.properties || []) {
+                                                                                if (tp.type === 'relation') {
+                                                                                    targetProps.push({ typeId, typeName: targetType.name, prop: tp });
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+
+                                                                    return targetProps.map(({ typeName, prop: tp }) => (
+                                                                        <option key={tp.id} value={tp.id}>
+                                                                            {typeName} → {tp.name}
+                                                                        </option>
+                                                                    ));
+                                                                })()}
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

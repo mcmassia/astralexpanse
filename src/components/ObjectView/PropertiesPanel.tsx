@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import type { AstralObject, ObjectType, PropertyDefinition, PropertyValue } from '../../types/object';
 import { useObjectStore } from '../../stores/objectStore';
+import { useToast } from '../common';
 import './PropertiesPanel.css';
 
 interface PropertiesPanelProps {
@@ -28,6 +29,8 @@ export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick 
         return null;
     }
 
+    const toast = useToast();
+
     return (
         <div className="properties-panel">
             <h3 className="properties-title">Propiedades</h3>
@@ -37,10 +40,13 @@ export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick 
                         key={prop.id}
                         definition={prop}
                         value={object.properties[prop.id]}
+                        currentObject={object}
+                        currentObjectType={objectType}
                         onChange={(value) => handlePropertyChange(prop.id, value)}
                         objects={objects}
                         objectTypes={objectTypes}
                         onRelationClick={onRelationClick}
+                        toast={toast}
                     />
                 ))}
             </div>
@@ -52,13 +58,44 @@ export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick 
 interface PropertyInputProps {
     definition: PropertyDefinition;
     value: PropertyValue | undefined;
+    currentObject: AstralObject;
+    currentObjectType: ObjectType;
     onChange: (value: PropertyValue) => void;
     objects: AstralObject[];
     objectTypes: ObjectType[];
     onRelationClick?: (objectId: string) => void;
+    toast: ReturnType<typeof useToast>;
 }
 
-const PropertyInput = ({ definition, value, onChange, objects, objectTypes, onRelationClick }: PropertyInputProps) => {
+const PropertyInput = ({ definition, value, currentObject, currentObjectType, onChange, objects, objectTypes, onRelationClick, toast }: PropertyInputProps) => {
+
+    // Calculate computed property value by traversing through relations
+    const computedValue = (() => {
+        if (!definition.computed || !definition.computedFrom) return null;
+
+        const { throughProperty, collectProperty } = definition.computedFrom;
+        const throughRelations = (currentObject.properties[throughProperty] as { id: string; title: string }[]) || [];
+
+        // Collect all values from the collectProperty of each related object
+        const collected: { id: string; title: string }[] = [];
+        const seenIds = new Set<string>();
+
+        for (const rel of throughRelations) {
+            const relatedObj = objects.find(o => o.id === rel.id);
+            if (relatedObj) {
+                const collectedRels = (relatedObj.properties[collectProperty] as { id: string; title: string }[]) || [];
+                for (const c of collectedRels) {
+                    if (!seenIds.has(c.id)) {
+                        seenIds.add(c.id);
+                        collected.push(c);
+                    }
+                }
+            }
+        }
+
+        return collected;
+    })();
+
     const renderInput = () => {
         switch (definition.type) {
             case 'text':
@@ -362,6 +399,87 @@ const PropertyInput = ({ definition, value, onChange, objects, objectTypes, onRe
                 return <span className="prop-unsupported">Tipo no soportado</span>;
         }
     };
+
+    // Render computed property as read-only
+    if (definition.computed && computedValue !== null) {
+        // Build info message for toast
+        const handleShowComputedInfo = () => {
+            const throughPropDef = currentObjectType.properties?.find(p => p.id === definition.computedFrom?.throughProperty);
+            const throughPropName = throughPropDef?.name || 'desconocida';
+
+            // Get target type name
+            let targetTypeName = 'objetos';
+            if (throughPropDef?.linkedTypeId) {
+                const targetType = objectTypes.find(t => t.id === throughPropDef.linkedTypeId);
+                targetTypeName = targetType?.namePlural || targetType?.name || 'objetos';
+            } else if (throughPropDef?.relationTypeId && throughPropDef.relationTypeId !== 'any') {
+                const typeIds = throughPropDef.relationTypeId.split(',');
+                const targetType = objectTypes.find(t => t.id === typeIds[0]);
+                targetTypeName = targetType?.namePlural || targetType?.name || 'objetos';
+            }
+
+            // Get collect property name
+            const collectPropId = definition.computedFrom?.collectProperty;
+            let collectPropName = 'desconocida';
+            for (const type of objectTypes) {
+                const prop = type.properties?.find(p => p.id === collectPropId);
+                if (prop) {
+                    collectPropName = prop.name;
+                    break;
+                }
+            }
+
+            toast.info(
+                'Propiedad calculada',
+                `A través de "${throughPropName}" se recogen las "${collectPropName}" de ${targetTypeName}.`
+            );
+        };
+
+        return (
+            <div className="property-row computed">
+                <label className="property-label">
+                    {definition.name}
+                    <button
+                        className="computed-indicator"
+                        onClick={handleShowComputedInfo}
+                        title="Propiedad calculada - clic para más info"
+                    >
+                        ƒ
+                    </button>
+                </label>
+                <div className="property-value">
+                    {computedValue.length > 0 ? (
+                        <div className="relation-tags computed-tags">
+                            {computedValue.map(rel => {
+                                const relObj = objects.find(o => o.id === rel.id);
+                                const relType = relObj ? objectTypes.find(t => t.id === relObj.type) : null;
+                                return (
+                                    <span
+                                        key={rel.id}
+                                        className={`relation-tag computed-relation ${onRelationClick ? 'clickable' : ''}`}
+                                        style={{ '--type-color': relType?.color || '#6366f1' } as React.CSSProperties}
+                                        onClick={() => onRelationClick?.(rel.id)}
+                                        role={onRelationClick ? 'button' : undefined}
+                                        tabIndex={onRelationClick ? 0 : undefined}
+                                        onKeyDown={(e) => {
+                                            if (onRelationClick && (e.key === 'Enter' || e.key === ' ')) {
+                                                e.preventDefault();
+                                                onRelationClick(rel.id);
+                                            }
+                                        }}
+                                    >
+                                        {relType?.icon || '📄'} {rel.title}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <span className="computed-empty">Sin elementos</span>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="property-row">
