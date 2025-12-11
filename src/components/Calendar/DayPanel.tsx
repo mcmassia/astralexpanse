@@ -13,7 +13,7 @@ interface DayPanelProps {
 
 export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelProps) => {
     const { objects, objectTypes, selectObject, createObject } = useObjectStore();
-    const { setSelectedDate, setCalendarView } = useUIStore();
+    const { setSelectedDate, setCalendarView, setCurrentSection } = useUIStore();
 
     const dateStr = formatDateISO(date);
     const today = isToday(date);
@@ -91,6 +91,7 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
                     onClick={(e) => {
                         e.stopPropagation();
                         selectObject(dailyNote.id);
+                        setCurrentSection('objects');
                     }}
                 >
                     📓 Nota diaria
@@ -126,6 +127,7 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     selectObject(obj.id);
+                                    setCurrentSection('objects');
                                 }}
                                 style={{ '--type-color': type?.color } as React.CSSProperties}
                             >
