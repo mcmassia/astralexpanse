@@ -125,6 +125,16 @@
     background: color-mix(in srgb, var(--error) 15%, transparent);
 }
 
+.action-btn.focus {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.action-btn.focus.active {
+    color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+}
+
 /* Backlinks */
 .object-backlinks {
     padding: 1rem 2rem;

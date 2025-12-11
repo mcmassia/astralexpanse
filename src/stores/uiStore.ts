@@ -49,6 +49,17 @@ interface UIStore {
     selectedDate: Date;
     calendarSidebarOpen: boolean;
 
+    // Properties Panel
+    propertiesPanelOpen: boolean;
+
+    // Focus Mode
+    focusMode: boolean;
+    preFocusState: {
+        sidebarOpen: boolean;
+        calendarSidebarOpen: boolean;
+        propertiesPanelOpen: boolean;
+    } | null;
+
     // Actions
     setCurrentSection: (section: AppSection) => void;
     toggleSidebar: () => void;
@@ -82,6 +93,13 @@ interface UIStore {
     goToPreviousMonth: () => void;
     goToNextMonth: () => void;
     toggleCalendarSidebar: () => void;
+
+    // Properties Panel actions
+    togglePropertiesPanel: () => void;
+
+    // Focus Mode actions
+    toggleFocusMode: () => void;
+    exitFocusMode: () => void;
 }
 
 const defaultExtendedFilters: ExtendedSearchFilters = {
@@ -117,6 +135,13 @@ export const useUIStore = create<UIStore>()(
             calendarView: 'day',
             selectedDate: new Date(),
             calendarSidebarOpen: true,
+
+            // Properties Panel default
+            propertiesPanelOpen: true,
+
+            // Focus Mode defaults
+            focusMode: false,
+            preFocusState: null,
 
             setCurrentSection: (section) => set({ currentSection: section }),
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -199,6 +224,46 @@ export const useUIStore = create<UIStore>()(
                 return { selectedDate: next };
             }),
             toggleCalendarSidebar: () => set((s) => ({ calendarSidebarOpen: !s.calendarSidebarOpen })),
+
+            // Properties Panel
+            togglePropertiesPanel: () => set((s) => ({ propertiesPanelOpen: !s.propertiesPanelOpen })),
+
+            // Focus Mode
+            toggleFocusMode: () => set((s) => {
+                if (s.focusMode) {
+                    // Exit focus mode - restore previous state
+                    return {
+                        focusMode: false,
+                        sidebarOpen: s.preFocusState?.sidebarOpen ?? true,
+                        calendarSidebarOpen: s.preFocusState?.calendarSidebarOpen ?? true,
+                        propertiesPanelOpen: s.preFocusState?.propertiesPanelOpen ?? true,
+                        preFocusState: null,
+                    };
+                } else {
+                    // Enter focus mode - save current state and collapse all
+                    return {
+                        focusMode: true,
+                        preFocusState: {
+                            sidebarOpen: s.sidebarOpen,
+                            calendarSidebarOpen: s.calendarSidebarOpen,
+                            propertiesPanelOpen: s.propertiesPanelOpen,
+                        },
+                        sidebarOpen: false,
+                        calendarSidebarOpen: false,
+                        propertiesPanelOpen: false,
+                    };
+                }
+            }),
+            exitFocusMode: () => set((s) => {
+                if (!s.focusMode) return {};
+                return {
+                    focusMode: false,
+                    sidebarOpen: s.preFocusState?.sidebarOpen ?? true,
+                    calendarSidebarOpen: s.preFocusState?.calendarSidebarOpen ?? true,
+                    propertiesPanelOpen: s.preFocusState?.propertiesPanelOpen ?? true,
+                    preFocusState: null,
+                };
+            }),
         }),
         {
             name: 'astral-ui-store',
@@ -208,6 +273,7 @@ export const useUIStore = create<UIStore>()(
                 theme: state.theme,
                 calendarView: state.calendarView,
                 calendarSidebarOpen: state.calendarSidebarOpen,
+                propertiesPanelOpen: state.propertiesPanelOpen,
             }),
         }
     )

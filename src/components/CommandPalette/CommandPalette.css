@@ -12,7 +12,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 10vh;
+    padding-top: 8vh;
     z-index: 1000;
     animation: fadeIn 0.15s ease;
 }
@@ -29,9 +29,9 @@
 
 /* Main container */
 .command-palette {
-    width: 600px;
+    width: 800px;
     max-width: 90vw;
-    max-height: 70vh;
+    max-height: 85vh;
     background: var(--bg-secondary);
     border: 1px solid var(--border-default);
     border-radius: 16px;
@@ -45,8 +45,8 @@
 }
 
 .command-palette.extended {
-    width: 800px;
-    max-height: 80vh;
+    width: 950px;
+    max-height: 90vh;
 }
 
 @keyframes slideDown {

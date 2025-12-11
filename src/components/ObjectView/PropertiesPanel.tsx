@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import type { AstralObject, ObjectType, PropertyDefinition, PropertyValue } from '../../types/object';
 import { useObjectStore } from '../../stores/objectStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useToast } from '../common';
 import './PropertiesPanel.css';
 
@@ -15,6 +16,7 @@ interface PropertiesPanelProps {
 export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick }: PropertiesPanelProps) => {
     const objects = useObjectStore(s => s.objects);
     const objectTypes = useObjectStore(s => s.objectTypes);
+    const { propertiesPanelOpen, togglePropertiesPanel } = useUIStore();
 
     const handlePropertyChange = useCallback((propId: string, value: PropertyValue) => {
         onUpdate({
@@ -32,24 +34,41 @@ export const PropertiesPanel = ({ object, objectType, onUpdate, onRelationClick 
     const toast = useToast();
 
     return (
-        <div className="properties-panel">
-            <h3 className="properties-title">Propiedades</h3>
-            <div className="properties-grid">
-                {objectType.properties.map(prop => (
-                    <PropertyInput
-                        key={prop.id}
-                        definition={prop}
-                        value={object.properties[prop.id]}
-                        currentObject={object}
-                        currentObjectType={objectType}
-                        onChange={(value) => handlePropertyChange(prop.id, value)}
-                        objects={objects}
-                        objectTypes={objectTypes}
-                        onRelationClick={onRelationClick}
-                        toast={toast}
-                    />
-                ))}
-            </div>
+        <div className={`properties-panel ${propertiesPanelOpen ? 'expanded' : 'collapsed'}`}>
+            <h3
+                className="properties-title"
+                onClick={togglePropertiesPanel}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        togglePropertiesPanel();
+                    }
+                }}
+            >
+                <span className={`properties-chevron ${propertiesPanelOpen ? 'expanded' : ''}`}>▶</span>
+                Propiedades
+                <span className="properties-count">{objectType.properties.length}</span>
+            </h3>
+            {propertiesPanelOpen && (
+                <div className="properties-grid">
+                    {objectType.properties.map(prop => (
+                        <PropertyInput
+                            key={prop.id}
+                            definition={prop}
+                            value={object.properties[prop.id]}
+                            currentObject={object}
+                            currentObjectType={objectType}
+                            onChange={(value) => handlePropertyChange(prop.id, value)}
+                            objects={objects}
+                            objectTypes={objectTypes}
+                            onRelationClick={onRelationClick}
+                            toast={toast}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

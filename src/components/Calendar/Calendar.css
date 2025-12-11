@@ -691,24 +691,29 @@
 
 .mini-calendar-collapse-btn {
     position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
+    top: 56px;
+    left: 0;
+    transform: translateX(-50%);
     width: 20px;
     height: 20px;
-    border: none;
-    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
-    font-size: 0.75rem;
-    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 10;
+    transition: all 0.15s ease;
 }
 
 .mini-calendar-collapse-btn:hover {
-    background: var(--accent-primary);
-    color: white;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent-primary);
 }
 
 .mini-calendar-header {

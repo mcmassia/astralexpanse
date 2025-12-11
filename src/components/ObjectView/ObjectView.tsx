@@ -1,6 +1,7 @@
 // Object view component - main content area for viewing/editing objects
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useObjectStore, useSelectedObject } from '../../stores/objectStore';
+import { useUIStore } from '../../stores/uiStore';
 import { Editor } from '../Editor';
 import type { EditorRef } from '../Editor';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -15,6 +16,7 @@ export const ObjectView = () => {
     const deleteObject = useObjectStore(s => s.deleteObject);
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
+    const { focusMode, toggleFocusMode } = useUIStore();
     const toast = useToast();
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -207,6 +209,13 @@ export const ObjectView = () => {
                 </div>
 
                 <div className="object-actions">
+                    <button
+                        className={`action-btn focus ${focusMode ? 'active' : ''}`}
+                        onClick={toggleFocusMode}
+                        title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco (⌘.)'}
+                    >
+                        {focusMode ? '◉' : '○'}
+                    </button>
                     <button className="action-btn delete" onClick={handleDelete} title="Eliminar">
                         🗑️
                     </button>

@@ -17,7 +17,7 @@ import './index.css';
 function App() {
   const { user, isLoading: authLoading, error: authError, signIn, initialize: initAuth } = useAuthStore();
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
-  const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar } = useUIStore();
+  const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar, focusMode, toggleFocusMode, exitFocusMode } = useUIStore();
   const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
@@ -85,11 +85,25 @@ function App() {
         openCommandPalette('extended');
         return;
       }
+
+      // Cmd+. or Ctrl+.: Toggle focus mode
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        toggleFocusMode();
+        return;
+      }
+
+      // Escape: Exit focus mode (when in focus mode)
+      if (e.key === 'Escape' && focusMode) {
+        e.preventDefault();
+        exitFocusMode();
+        return;
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openCommandPalette, commandPaletteOpen]);
+  }, [openCommandPalette, commandPaletteOpen, focusMode, toggleFocusMode, exitFocusMode]);
 
   // Loading state
   if (authLoading) {

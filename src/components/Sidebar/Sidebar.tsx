@@ -16,7 +16,7 @@ export const Sidebar = () => {
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
 
-    const { sidebarOpen, sidebarWidth, searchQuery, setSearchQuery, currentSection, setCurrentSection, setCalendarView, goToToday } = useUIStore();
+    const { sidebarOpen, sidebarWidth, currentSection, setCurrentSection, setCalendarView, goToToday, toggleSidebar } = useUIStore();
     const { user, signOut } = useAuthStore();
     const toast = useToast();
 
@@ -24,20 +24,15 @@ export const Sidebar = () => {
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
     const [editingType, setEditingType] = useState<ObjectType | null>(null);
 
-    // Group and filter objects by type
+    // Group objects by type (no filtering since search was removed)
     const groupedObjects = useMemo(() => {
-        const lowerQuery = searchQuery.toLowerCase();
-        const filtered = searchQuery
-            ? objects.filter(o => o.title.toLowerCase().includes(lowerQuery))
-            : objects;
-
         const groups: Record<string, typeof objects> = {};
-        for (const obj of filtered) {
+        for (const obj of objects) {
             if (!groups[obj.type]) groups[obj.type] = [];
             groups[obj.type].push(obj);
         }
         return groups;
-    }, [objects, searchQuery]);
+    }, [objects]);
 
     const toggleType = (typeId: string) => {
         setExpandedTypes(prev => {
@@ -71,25 +66,76 @@ export const Sidebar = () => {
         setCurrentSection('objects');
     };
 
-    if (!sidebarOpen) return null;
+    if (!sidebarOpen) {
+        // Collapsed sidebar - show only toggle and icons
+        return (
+            <aside className="sidebar collapsed">
+                <button
+                    className="sidebar-collapse-btn"
+                    onClick={toggleSidebar}
+                    title="Expandir barra lateral"
+                >
+                    ›
+                </button>
+                <div className="sidebar-collapsed-content">
+                    <div className="sidebar-logo collapsed">
+                        <span className="logo-icon">✦</span>
+                    </div>
+                    <div className="sidebar-collapsed-tabs">
+                        <button
+                            className={`sidebar-collapsed-tab ${currentSection === 'objects' ? 'active' : ''}`}
+                            onClick={handleObjectsClick}
+                            title="Objetos"
+                        >
+                            📄
+                        </button>
+                        <button
+                            className={`sidebar-collapsed-tab ${currentSection === 'calendar' ? 'active' : ''}`}
+                            onClick={handleCalendarClick}
+                            title="Calendario"
+                        >
+                            📅
+                        </button>
+                    </div>
+                    <div className="sidebar-collapsed-types">
+                        {objectTypes.slice(0, 8).map(type => (
+                            <button
+                                key={type.id}
+                                className="sidebar-collapsed-type"
+                                onClick={() => {
+                                    setExpandedTypes(prev => new Set([...prev, type.id]));
+                                    toggleSidebar();
+                                }}
+                                title={type.namePlural}
+                            >
+                                {type.icon}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="sidebar-footer collapsed">
+                    {user?.photoURL && (
+                        <img src={user.photoURL} alt="" className="user-avatar" />
+                    )}
+                </div>
+            </aside>
+        );
+    }
 
     return (
         <aside className="sidebar" style={{ width: sidebarWidth }}>
+            <button
+                className="sidebar-collapse-btn"
+                onClick={toggleSidebar}
+                title="Colapsar barra lateral"
+            >
+                ‹
+            </button>
             <div className="sidebar-header">
                 <div className="sidebar-logo">
                     <span className="logo-icon">✦</span>
                     <span className="logo-text">Astral Expanse</span>
                 </div>
-            </div>
-
-            <div className="sidebar-search">
-                <input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="search-input"
-                />
             </div>
 
             {/* Section Tabs */}
