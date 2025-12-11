@@ -231,4 +231,3 @@ export const deleteFromDrive = async (fileId: string): Promise<void> => {
 export const isDriveConnected = (): boolean => {
     return !!getGoogleAccessToken() && !isGoogleAccessTokenExpired();
 };
-

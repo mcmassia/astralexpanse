@@ -20,7 +20,11 @@ interface ResultItem {
     event?: CalendarEvent; // For calendar events
 }
 
-export const CommandPalette = () => {
+interface CommandPaletteProps {
+    onOpenImport?: () => void;
+}
+
+export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
     const {
         commandPaletteOpen,
         commandPaletteMode,
@@ -130,7 +134,17 @@ export const CommandPalette = () => {
                 signOut();
             },
         },
-    ], [closeCommandPalette, openSettings, setTheme, signOut]);
+        {
+            id: 'import-capacities',
+            label: 'Importar desde Capacities',
+            icon: '📥',
+            category: 'settings',
+            action: () => {
+                closeCommandPalette();
+                onOpenImport?.();
+            },
+        },
+    ], [closeCommandPalette, openSettings, setTheme, signOut, onOpenImport]);
 
     // Create actions for each object type
     const createActions = useMemo((): ResultItem[] => {

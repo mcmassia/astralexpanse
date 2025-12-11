@@ -1,5 +1,5 @@
 // Main App component
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useObjectStore } from './stores/objectStore';
 import { useUIStore } from './stores/uiStore';
@@ -9,6 +9,7 @@ import { ObjectView } from './components/ObjectView';
 import { Calendar } from './components/Calendar';
 import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
+import { ImportModal } from './components/Import/ImportModal';
 import { ToastProvider } from './components/common';
 import { getGoogleAccessTokenExpiration } from './services/firebase';
 import './index.css';
@@ -18,6 +19,7 @@ function App() {
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
   const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar } = useUIStore();
   const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Initialize auth listener
   useEffect(() => {
@@ -160,7 +162,10 @@ function App() {
         </aside>
 
         {/* Command Palette */}
-        <CommandPalette />
+        <CommandPalette onOpenImport={() => setImportModalOpen(true)} />
+
+        {/* Import Modal */}
+        <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
       </div>
     </ToastProvider>
   );

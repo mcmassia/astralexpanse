@@ -307,4 +307,78 @@ export const getCalendarConfig = async (): Promise<CalendarSyncConfig | null> =>
     } as CalendarSyncConfig;
 };
 
+// ============ IMPORT HISTORY ============
 
+const IMPORT_HISTORY_COLLECTION = 'importHistory';
+
+export interface ImportHistoryRecord {
+    id: string;
+    timestamp: Date;
+    fileName: string;
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: string[];
+    warnings: string[];
+    newTypes: Array<{ id: string; name: string; icon: string; color: string }>;
+    options: {
+        handleConflicts: 'merge' | 'skip' | 'duplicate' | 'overwrite';
+        convertHashtags: 'mentions' | 'tags' | 'plain';
+        importMedia: boolean;
+    };
+}
+
+export const saveImportHistory = async (record: Omit<ImportHistoryRecord, 'id'>): Promise<ImportHistoryRecord> => {
+    const db = getFirestoreDb();
+    const docRef = doc(collection(db, IMPORT_HISTORY_COLLECTION));
+
+    const newRecord: ImportHistoryRecord = {
+        ...record,
+        id: docRef.id
+    };
+
+    await setDoc(docRef, {
+        ...newRecord,
+        timestamp: Timestamp.fromDate(record.timestamp)
+    });
+
+    return newRecord;
+};
+
+export const getLastImportHistory = async (): Promise<ImportHistoryRecord | null> => {
+    const db = getFirestoreDb();
+    const q = query(
+        collection(db, IMPORT_HISTORY_COLLECTION),
+        orderBy('timestamp', 'desc')
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return null;
+
+    const data = snapshot.docs[0].data();
+    return {
+        ...data,
+        timestamp: data.timestamp instanceof Timestamp
+            ? data.timestamp.toDate()
+            : new Date(data.timestamp)
+    } as ImportHistoryRecord;
+};
+
+export const getImportHistory = async (limit: number = 10): Promise<ImportHistoryRecord[]> => {
+    const db = getFirestoreDb();
+    const q = query(
+        collection(db, IMPORT_HISTORY_COLLECTION),
+        orderBy('timestamp', 'desc')
+    );
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.slice(0, limit).map(doc => {
+        const data = doc.data();
+        return {
+            ...data,
+            timestamp: data.timestamp instanceof Timestamp
+                ? data.timestamp.toDate()
+                : new Date(data.timestamp)
+        } as ImportHistoryRecord;
+    });
+};
