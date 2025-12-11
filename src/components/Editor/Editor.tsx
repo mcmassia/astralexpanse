@@ -16,6 +16,7 @@ import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension } from './extensions';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
@@ -80,6 +81,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 }, ref) => {
     const objects = useObjectStore(s => s.objects);
     const objectTypes = useObjectStore(s => s.objectTypes);
+    const createObject = useObjectStore(s => s.createObject);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initialContentRef = useRef(content);
     const isInternalUpdate = useRef(false);
@@ -198,6 +200,80 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 },
             }),
             MermaidBlock,
+            // Hashtag extensions (#tag)
+            HashtagNode,
+            HashtagExtension.configure({
+                onHashtag: async (tagName: string) => {
+                    // Find existing tag by name (case-insensitive)
+                    const tagType = objectTypes.find(t =>
+                        t.name.toLowerCase() === 'etiqueta' || t.id === 'tag'
+                    );
+                    if (!tagType) {
+                        console.warn('Tag type not found');
+                        return null;
+                    }
+
+                    const existingTag = objects.find(o =>
+                        o.type === tagType.id &&
+                        o.title.toLowerCase() === tagName.toLowerCase()
+                    );
+
+                    if (existingTag) {
+                        return {
+                            id: existingTag.id,
+                            label: existingTag.title,
+                            color: tagType.color || '#f472b6',
+                        };
+                    }
+
+                    // Create new tag
+                    try {
+                        const newTag = await createObject(tagType.id, tagName, '', false);
+                        return {
+                            id: newTag.id,
+                            label: newTag.title,
+                            color: tagType.color || '#f472b6',
+                        };
+                    } catch (error) {
+                        console.error('Error creating tag:', error);
+                        return null;
+                    }
+                },
+                getObjects: () => objects,
+                getObjectTypes: () => objectTypes,
+            }),
+            // Task inline extensions (TD)
+            TaskInlineNode,
+            TaskShortcutExtension.configure({
+                onCreateTask: async (title: string) => {
+                    // Find task type
+                    const taskType = objectTypes.find(t =>
+                        t.name.toLowerCase() === 'tarea' || t.id === 'task'
+                    );
+                    if (!taskType) {
+                        console.warn('Task type not found');
+                        return null;
+                    }
+
+                    try {
+                        const newTask = await createObject(
+                            taskType.id,
+                            title,
+                            '',
+                            false,
+                            { status: 'Pendiente' }
+                        );
+                        return {
+                            id: newTask.id,
+                            title: newTask.title,
+                            status: 'Pendiente',
+                        };
+                    } catch (error) {
+                        console.error('Error creating task:', error);
+                        return null;
+                    }
+                },
+            }),
             CustomMention.configure({
                 HTMLAttributes: {
                     class: 'mention',

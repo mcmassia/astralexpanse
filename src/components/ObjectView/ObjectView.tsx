@@ -115,9 +115,39 @@ export const ObjectView = () => {
         selectObject(id);
     };
 
-    // Handle clicking on mentions within the content
+    // Handle clicking on mentions, hashtags, and inline tasks within the content
     const handleMentionClick = useCallback((e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
+
+        // Check for hashtag pill click
+        const hashtagEl = target.classList.contains('hashtag-pill')
+            ? target
+            : target.closest('.hashtag-pill') as HTMLElement | null;
+        if (hashtagEl) {
+            const tagId = hashtagEl.getAttribute('data-hashtag-id');
+            if (tagId) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectObject(tagId);
+                return;
+            }
+        }
+
+        // Check for task inline click
+        const taskEl = target.classList.contains('task-inline')
+            ? target
+            : target.closest('.task-inline') as HTMLElement | null;
+        if (taskEl) {
+            const taskId = taskEl.getAttribute('data-task-id');
+            if (taskId) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectObject(taskId);
+                return;
+            }
+        }
+
+        // Check for mention click (existing behavior)
         if (target.classList.contains('mention') || target.closest('.mention')) {
             const mentionEl = target.classList.contains('mention') ? target : target.closest('.mention') as HTMLElement;
             const mentionId = mentionEl?.getAttribute('data-mention-id');

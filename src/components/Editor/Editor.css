@@ -450,3 +450,89 @@
   margin-bottom: 0.5rem;
   font-style: italic;
 }
+
+/* ============ HASHTAG PILLS ============ */
+.hashtag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1em 0.5em;
+  background: color-mix(in srgb, var(--hashtag-color, #f472b6) 15%, transparent);
+  color: var(--hashtag-color, #f472b6);
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.hashtag-pill:hover {
+  background: color-mix(in srgb, var(--hashtag-color, #f472b6) 25%, transparent);
+  transform: translateY(-1px);
+}
+
+/* Hashtag being typed (before conversion) */
+.hashtag-typing {
+  color: var(--accent-primary);
+  font-weight: 500;
+}
+
+/* ============ TASK INLINE ============ */
+.task-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2em 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.task-inline:hover {
+  opacity: 0.9;
+}
+
+.task-badge {
+  display: inline-block;
+  padding: 0.15em 0.5em;
+  background: #ef4444;
+  color: white;
+  font-weight: 700;
+  font-size: 0.7em;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.task-inline:hover .task-badge {
+  background: #dc2626;
+}
+
+.task-title {
+  color: var(--text-primary);
+}
+
+/* Completed task state */
+.task-inline.task-completed,
+.task-inline[data-status="Completada"] {
+  opacity: 0.6;
+}
+
+.task-inline.task-completed .task-title,
+.task-inline[data-status="Completada"] .task-title {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
+.task-inline.task-completed .task-badge,
+.task-inline[data-status="Completada"] .task-badge {
+  background: #22c55e;
+}
+
+/* TD shortcut hint while typing */
+.task-shortcut-hint {
+  background: color-mix(in srgb, #ef4444 20%, transparent);
+  color: #ef4444;
+  font-weight: 700;
+  padding: 0.1em 0.2em;
+  border-radius: 3px;
+}
