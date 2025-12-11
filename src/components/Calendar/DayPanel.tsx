@@ -1,7 +1,10 @@
 // Day Panel Component - Reusable day content for multi-day views
-import { useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useCalendarStore } from '../../stores/calendarStore';
+import type { CalendarEvent } from '../../types/calendar';
+import { EventModal } from './EventModal';
 import { formatDateISO, isToday, DAY_NAMES } from './utils';
 import './Calendar.css';
 
@@ -14,10 +17,19 @@ interface DayPanelProps {
 export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelProps) => {
     const { objects, objectTypes, selectObject, createObject } = useObjectStore();
     const { setSelectedDate, setCalendarView, setCurrentSection } = useUIStore();
+    const { getEventsForDate, events, initialize, initialized } = useCalendarStore();
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
     const dateStr = formatDateISO(date);
     const today = isToday(date);
     const dayOfWeek = (date.getDay() + 6) % 7; // Convert to Monday = 0
+
+    // Initialize calendar store
+    useEffect(() => {
+        if (!initialized) {
+            initialize();
+        }
+    }, [initialized, initialize]);
 
     // Format title as YYYY/MM/DD to match daily note title format
     const dailyNoteTitle = useMemo(() => {
@@ -26,6 +38,11 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}/${month}/${day}`;
     }, [date]);
+
+    // Get Google Calendar events for this date (no limit in any view)
+    const googleCalendarEvents = useMemo(() => {
+        return getEventsForDate(date);
+    }, [date, events, getEventsForDate]);
 
     // Get daily note for this date
     const dailyNote = useMemo(() => {
@@ -139,11 +156,36 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
                 </div>
             )}
 
+            {/* Google Calendar Events */}
+            {googleCalendarEvents.length > 0 && (
+                <div className="day-panel-events">
+                    {googleCalendarEvents.map(event => (
+                        <div
+                            key={event.id}
+                            className="day-panel-event"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEvent(event);
+                            }}
+                            style={{ '--event-color': event.calendarColor } as React.CSSProperties}
+                        >
+                            <span className="event-dot" style={{ background: event.calendarColor }} />
+                            <span className="event-title">{event.summary}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Tags Preview */}
             {dailyNote && dailyNote.tags.length > 0 && !compact && (
                 <div className="day-panel-tags">
                     🏷️ Etiquetas
                 </div>
+            )}
+
+            {/* Event Modal */}
+            {selectedEvent && (
+                <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
             )}
         </div>
     );

@@ -1,5 +1,7 @@
 // Calendar Header Component - View tabs and navigation
+import { useState } from 'react';
 import { useUIStore } from '../../stores/uiStore';
+import { CalendarSettings } from '../CalendarSettings';
 import { formatDayHeader, MONTH_NAMES, getWeekNumber } from './utils';
 import './Calendar.css';
 
@@ -18,6 +20,8 @@ const VIEW_TABS: ViewTab[] = [
 ];
 
 export const CalendarHeader = () => {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
     const {
         calendarView,
         selectedDate,
@@ -124,6 +128,13 @@ export const CalendarHeader = () => {
             </div>
 
             <div className="calendar-header-right">
+                <button
+                    className="calendar-settings-btn"
+                    onClick={() => setIsSettingsOpen(true)}
+                    title="Configurar calendarios de Google"
+                >
+                    ⚙️
+                </button>
                 <div className="calendar-nav">
                     <button className="calendar-nav-btn" onClick={handlePrevious}>
                         ‹
@@ -136,8 +147,14 @@ export const CalendarHeader = () => {
                     </button>
                 </div>
             </div>
+
+            <CalendarSettings
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+            />
         </header>
     );
 };
 
 export default CalendarHeader;
+

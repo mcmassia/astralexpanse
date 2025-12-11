@@ -16,10 +16,12 @@ import {
 import type { QueryConstraint, Unsubscribe } from 'firebase/firestore';
 import { getFirestoreDb } from './firebase';
 import type { AstralObject, ObjectType, SavedQuery } from '../types/object';
+import type { CalendarSyncConfig } from '../types/calendar';
 
 const OBJECTS_COLLECTION = 'objects';
 const TYPES_COLLECTION = 'objectTypes';
 const QUERIES_COLLECTION = 'savedQueries';
+const CALENDAR_CONFIG_COLLECTION = 'calendarConfig';
 
 // Helper to convert Firestore timestamps
 const convertTimestamps = (data: Record<string, unknown>): AstralObject => {
@@ -278,4 +280,31 @@ export const subscribeToSavedQueries = (
         }
     );
 };
+
+// ============ CALENDAR CONFIG ============
+
+export const saveCalendarConfig = async (config: CalendarSyncConfig): Promise<void> => {
+    const db = getFirestoreDb();
+    await setDoc(doc(db, CALENDAR_CONFIG_COLLECTION, 'config'), {
+        ...config,
+        lastSyncAt: config.lastSyncAt ? Timestamp.fromDate(config.lastSyncAt) : null,
+    });
+};
+
+export const getCalendarConfig = async (): Promise<CalendarSyncConfig | null> => {
+    const db = getFirestoreDb();
+    const docRef = doc(db, CALENDAR_CONFIG_COLLECTION, 'config');
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) return null;
+
+    const data = docSnap.data();
+    return {
+        ...data,
+        lastSyncAt: data.lastSyncAt instanceof Timestamp
+            ? data.lastSyncAt.toDate()
+            : data.lastSyncAt ? new Date(data.lastSyncAt) : undefined,
+    } as CalendarSyncConfig;
+};
+
 

@@ -3,17 +3,21 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useCalendarStore } from '../../stores/calendarStore';
 import { searchObjects, groupResultsByType, getAllTags } from '../../services/searchEngine';
+import { EventModal } from '../Calendar/EventModal';
 import type { CommandAction, SearchResult } from '../../types/object';
+import type { CalendarEvent } from '../../types/calendar';
 import './CommandPalette.css';
 
 interface ResultItem {
-    type: 'action' | 'create' | 'result' | 'quickCreate';
+    type: 'action' | 'create' | 'result' | 'quickCreate' | 'event';
     id: string;
     action?: CommandAction;
     result?: SearchResult;
     createType?: string;
     quickCreateName?: string; // For @tipo/nombre syntax
+    event?: CalendarEvent; // For calendar events
 }
 
 export const CommandPalette = () => {
@@ -38,7 +42,10 @@ export const CommandPalette = () => {
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
 
+    const calendarEvents = useCalendarStore(s => s.events);
+
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +175,20 @@ export const CommandPalette = () => {
         });
     }, [objects, objectTypes, commandPaletteQuery, commandPaletteMode, extendedSearchFilters, quickCreateMatch]);
 
+    // Filter calendar events by query
+    const filteredCalendarEvents = useMemo(() => {
+        if (quickCreateMatch) return [];
+        const query = commandPaletteQuery.toLowerCase().trim();
+        if (!query) return []; // Only show events when searching
+
+        return calendarEvents.filter(event =>
+            event.summary.toLowerCase().includes(query) ||
+            event.description?.toLowerCase().includes(query) ||
+            event.location?.toLowerCase().includes(query) ||
+            event.calendarName.toLowerCase().includes(query)
+        ).slice(0, 5); // Limit to 5 calendar events
+    }, [calendarEvents, commandPaletteQuery, quickCreateMatch]);
+
     // Build unified list of items
     const items = useMemo((): ResultItem[] => {
         const result: ResultItem[] = [];
@@ -208,7 +229,7 @@ export const CommandPalette = () => {
             }
         }
 
-        // Add search results
+        // Add search results from objects
         for (const sr of searchResults) {
             result.push({
                 type: 'result',
@@ -217,8 +238,17 @@ export const CommandPalette = () => {
             });
         }
 
+        // Add calendar events
+        for (const event of filteredCalendarEvents) {
+            result.push({
+                type: 'event',
+                id: `event-${event.id}`,
+                event: event,
+            });
+        }
+
         return result;
-    }, [commands, createActions, searchResults, commandPaletteQuery, commandPaletteMode, quickCreateMatch]);
+    }, [commands, createActions, searchResults, filteredCalendarEvents, commandPaletteQuery, commandPaletteMode, quickCreateMatch]);
 
     // Grouped results for extended mode
     const groupedResults = useMemo(() => {
@@ -291,6 +321,11 @@ export const CommandPalette = () => {
                     const { setCurrentSection } = useUIStore.getState();
                     setCurrentSection('objects');
                     closeCommandPalette();
+                }
+                break;
+            case 'event':
+                if (item.event) {
+                    setSelectedEvent(item.event);
                 }
                 break;
         }
@@ -455,6 +490,17 @@ export const CommandPalette = () => {
                     )}
                 </div>
             </div>
+
+            {/* Event Modal for calendar events */}
+            {selectedEvent && (
+                <EventModal
+                    event={selectedEvent}
+                    onClose={() => {
+                        setSelectedEvent(null);
+                        closeCommandPalette();
+                    }}
+                />
+            )}
         </div>
     );
 };
@@ -528,6 +574,40 @@ const CommandItem = ({
                     style={{ backgroundColor: type?.color }}
                 >
                     + Nuevo
+                </span>
+            </div>
+        );
+    }
+
+    if (item.type === 'event' && item.event) {
+        const event = item.event;
+        const eventDate = new Date(event.start);
+        const formatEventTime = () => {
+            if (event.isAllDay) return 'Todo el día';
+            return eventDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        };
+        const formatEventDate = () => {
+            return eventDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+        };
+
+        return (
+            <div
+                className={`command-item event ${isSelected ? 'selected' : ''}`}
+                onClick={onClick}
+                style={{ '--type-color': event.calendarColor } as React.CSSProperties}
+            >
+                <span className="command-item-icon">📅</span>
+                <div className="command-item-content">
+                    <div className="command-item-title">{event.summary}</div>
+                    <div className="command-item-context">
+                        {formatEventDate()} • {formatEventTime()} • {event.calendarName}
+                    </div>
+                </div>
+                <span
+                    className="command-item-badge"
+                    style={{ backgroundColor: event.calendarColor }}
+                >
+                    Evento
                 </span>
             </div>
         );

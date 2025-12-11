@@ -544,6 +544,47 @@
     padding-top: 0.5rem;
 }
 
+/* Day Panel Google Calendar Events */
+.day-panel-events {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 0.5rem;
+}
+
+.day-panel-event {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    font-size: 0.6875rem;
+    border-left: 3px solid var(--event-color, #4285f4);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.day-panel-event:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(2px);
+}
+
+.day-panel-event .event-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.day-panel-event .event-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
 /* ===== Month View ===== */
 .month-view {
     display: flex;
@@ -845,6 +886,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
+}
+
+.mini-event-time {
+    font-size: 0.625rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.mini-event.google-event {
+    border-left: 2px solid var(--accent-secondary, #4285f4);
 }
 
 .mini-events-empty {
@@ -881,4 +933,332 @@
     .week-view {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* ===== Calendar Settings Button ===== */
+.calendar-settings-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-default);
+    background: var(--bg-secondary);
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.calendar-settings-btn:hover {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+/* ===== Google Calendar Events ===== */
+.google-events-section {
+    border-left: 3px solid var(--accent-secondary, #4285f4);
+}
+
+.day-view-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.day-view-event-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 6px;
+    border-left: 4px solid;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.day-view-event-item:hover {
+    background: var(--bg-tertiary);
+    transform: translateX(4px);
+}
+
+.event-time {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+}
+
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.event-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.event-location {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.event-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 4px;
+}
+
+.event-calendar-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: white;
+}
+
+.event-account {
+    font-size: 0.625rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+/* ===== Event Detail Modal ===== */
+.event-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+.event-modal {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 480px;
+    max-height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.event-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.event-modal-header h2 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.event-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    margin-left: 1rem;
+    transition: color 0.2s;
+}
+
+.event-modal-close:hover {
+    color: var(--text-primary);
+}
+
+.event-modal-content {
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.event-modal-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.event-modal-row.description {
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.event-modal-row.description p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding-left: 1.5rem;
+}
+
+.event-modal-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.event-modal-row span:not(.event-modal-icon):not(.event-calendar-badge) {
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+}
+
+/* Modal Actions */
+.event-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.event-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    min-width: 140px;
+}
+
+.event-modal-btn.primary {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.event-modal-btn.primary:hover:not(:disabled) {
+    background: var(--accent-dark, #5556cd);
+    transform: translateY(-1px);
+}
+
+.event-modal-btn.secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.event-modal-btn.secondary:hover {
+    background: var(--bg-hover);
+}
+
+.event-modal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Type Selector */
+.event-modal-type-selector {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-primary);
+}
+
+.type-selector-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+}
+
+.type-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+}
+
+.type-selector-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.type-selector-item:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--type-color, var(--accent-primary));
+}
+
+.type-selector-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.type-selector-item .type-icon {
+    font-size: 1.25rem;
+}
+
+.type-selector-item .type-name {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Legacy link style for backwards compatibility */
+.event-modal-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    background: var(--accent-primary);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.event-modal-link:hover {
+    background: var(--accent-dark, #5556cd);
+    transform: translateY(-1px);
+}
+
+/* ===== Has Events Indicator ===== */
+.mini-day.has-events::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 4px;
+    height: 4px;
+    background: #4285f4;
+    border-radius: 50%;
 }

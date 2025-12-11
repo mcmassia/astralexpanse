@@ -1,7 +1,10 @@
 // Mini Calendar Widget - Collapsible side panel calendar with events
-import { useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useCalendarStore } from '../../stores/calendarStore';
+import type { CalendarEvent } from '../../types/calendar';
+import { EventModal } from './EventModal';
 import { getMonthGrid, isSameDay, isToday, formatDateISO, DAY_NAMES, MONTH_NAMES } from './utils';
 import './Calendar.css';
 
@@ -13,6 +16,8 @@ interface MiniCalendarProps {
 export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps) => {
     const { selectedDate, setSelectedDate, setCurrentSection } = useUIStore();
     const { objects, objectTypes, selectObject } = useObjectStore();
+    const { events, getEventsForDate, initialize, initialized, syncConfig, syncEvents } = useCalendarStore();
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
     const currentMonth = selectedDate.getMonth();
     const currentYear = selectedDate.getFullYear();
@@ -69,6 +74,40 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
             (obj.properties.date === dateStr || obj.title === titleFormat || obj.title === dateStr)
         );
     }, [objects, selectedDate]);
+
+    // Google Calendar events for selected date
+    const googleCalendarEvents = useMemo(() => {
+        return getEventsForDate(selectedDate);
+    }, [selectedDate, events, getEventsForDate]);
+
+    // Dates with Google Calendar events (for indicators)
+    const datesWithGoogleEvents = useMemo(() => {
+        const dates = new Set<string>();
+        events.forEach(event => {
+            const eventDate = new Date(event.start);
+            dates.add(formatDateISO(eventDate));
+        });
+        return dates;
+    }, [events]);
+
+    // Initialize calendar store and sync events
+    useEffect(() => {
+        if (!initialized) {
+            initialize();
+        }
+    }, [initialized, initialize]);
+
+    // Sync events for the current month
+    useEffect(() => {
+        const hasSelectedCalendars = Object.values(syncConfig.selectedCalendars).some(
+            (ids) => ids.length > 0
+        );
+        if (hasSelectedCalendars && initialized) {
+            const startDate = new Date(currentYear, currentMonth, 1);
+            const endDate = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+            syncEvents(startDate, endDate);
+        }
+    }, [currentMonth, currentYear, syncConfig.selectedCalendars, syncEvents, initialized]);
 
     // Navigation
     const goToPrevMonth = () => {
@@ -139,11 +178,12 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
                     const isSelected = isSameDay(date, selectedDate);
                     const hasNote = datesWithNotes.has(dateStr);
                     const hasObjects = datesWithObjects.has(dateStr);
+                    const hasGoogleEvents = datesWithGoogleEvents.has(dateStr);
 
                     return (
                         <button
                             key={dateStr}
-                            className={`mini-day ${!isCurrentMonth ? 'other-month' : ''} ${isSelected ? 'selected' : ''} ${isToday(date) ? 'today' : ''} ${hasNote ? 'has-note' : ''} ${hasObjects ? 'has-objects' : ''}`}
+                            className={`mini-day ${!isCurrentMonth ? 'other-month' : ''} ${isSelected ? 'selected' : ''} ${isToday(date) ? 'today' : ''} ${hasNote ? 'has-note' : ''} ${hasObjects ? 'has-objects' : ''} ${hasGoogleEvents ? 'has-events' : ''}`}
                             onClick={() => setSelectedDate(date)}
                         >
                             {date.getDate()}
@@ -188,12 +228,37 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
                     );
                 })}
 
-                {!dailyNote && dateEvents.length === 0 && (
+                {/* Google Calendar Events */}
+                {googleCalendarEvents.length > 0 && (
+                    <div className="mini-event-section">
+                        <div className="mini-event-section-label">GOOGLE CALENDAR</div>
+                        {googleCalendarEvents.map(event => (
+                            <div
+                                key={event.id}
+                                className="mini-event google-event"
+                                onClick={() => setSelectedEvent(event)}
+                            >
+                                <span className="mini-event-dot" style={{ background: event.calendarColor }} />
+                                <span className="mini-event-title">{event.summary}</span>
+                                <span className="mini-event-time">
+                                    {event.isAllDay ? 'Todo el día' : new Date(event.start).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {!dailyNote && dateEvents.length === 0 && googleCalendarEvents.length === 0 && (
                     <div className="mini-events-empty">
                         Sin eventos para este día
                     </div>
                 )}
             </div>
+
+            {/* Event Modal */}
+            {selectedEvent && (
+                <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+            )}
         </div>
     );
 };

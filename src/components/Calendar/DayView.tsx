@@ -1,14 +1,20 @@
 // Day View Component - Single day display
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useCalendarStore } from '../../stores/calendarStore';
 import { formatDateISO, isSameDay } from './utils';
 import { QuickCreateBar } from './QuickCreateBar';
+import { EventModal } from './EventModal';
+import type { CalendarEvent } from '../../types/calendar';
 import './Calendar.css';
 
 export const DayView = () => {
     const { selectedDate, setCurrentSection } = useUIStore();
     const { objects, objectTypes, selectObject, createObject } = useObjectStore();
+    const { events, syncEvents, getEventsForDate, syncConfig, initialize, initialized } = useCalendarStore();
+
+    const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
     // Format date for daily note title: YYYY/MM/DD
     const dailyNoteTitle = useMemo(() => {
@@ -48,6 +54,58 @@ export const DayView = () => {
             obj.type !== 'daily' && isSameDay(new Date(obj.createdAt), selectedDate)
         );
     }, [objects, selectedDate]);
+
+    // Get Google Calendar events for selected date
+    const googleCalendarEvents = useMemo(() => {
+        return getEventsForDate(selectedDate);
+    }, [events, selectedDate, getEventsForDate]);
+
+    // Initialize calendar store and sync events when date changes
+    useEffect(() => {
+        if (!initialized) {
+            initialize();
+        }
+    }, [initialized, initialize]);
+
+    // Sync events when date changes or calendars are selected
+    useEffect(() => {
+        const hasSelectedCalendars = Object.values(syncConfig.selectedCalendars).some(
+            (ids) => ids.length > 0
+        );
+        if (hasSelectedCalendars) {
+            // Sync for the month surrounding the selected date
+            const startDate = new Date(selectedDate);
+            startDate.setDate(1);
+            startDate.setHours(0, 0, 0, 0);
+
+            const endDate = new Date(selectedDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+            endDate.setDate(0);
+            endDate.setHours(23, 59, 59, 999);
+
+            syncEvents(startDate, endDate);
+        }
+    }, [selectedDate, syncConfig.selectedCalendars, syncEvents]);
+
+    // Format event time
+    const formatEventTime = (event: CalendarEvent) => {
+        if (event.isAllDay) return 'Todo el día';
+        const start = new Date(event.start);
+        const end = new Date(event.end);
+        const formatTime = (d: Date) =>
+            d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        return `${formatTime(start)} - ${formatTime(end)}`;
+    };
+
+    // Handle event click
+    const handleEventClick = (event: CalendarEvent) => {
+        setSelectedEvent(event);
+    };
+
+    // Close event modal
+    const closeEventModal = () => {
+        setSelectedEvent(null);
+    };
 
     // Create daily note handler
     const handleCreateDailyNote = async () => {
@@ -170,6 +228,50 @@ export const DayView = () => {
                         })}
                     </div>
                 </section>
+            )}
+
+            {/* Google Calendar Events Section */}
+            {googleCalendarEvents.length > 0 && (
+                <section className="day-view-section google-events-section">
+                    <div className="day-view-section-header">
+                        <h3>📅 Eventos de Google Calendar</h3>
+                        <span className="day-view-count">{googleCalendarEvents.length}</span>
+                    </div>
+                    <div className="day-view-events-list">
+                        {googleCalendarEvents.map(event => (
+                            <div
+                                key={event.id}
+                                className="day-view-event-item"
+                                onClick={() => handleEventClick(event)}
+                                style={{ borderLeftColor: event.calendarColor }}
+                            >
+                                <div className="event-time">
+                                    {formatEventTime(event)}
+                                </div>
+                                <div className="event-details">
+                                    <span className="event-title">{event.summary}</span>
+                                    {event.location && (
+                                        <span className="event-location">📍 {event.location}</span>
+                                    )}
+                                </div>
+                                <div className="event-meta">
+                                    <span
+                                        className="event-calendar-badge"
+                                        style={{ backgroundColor: event.calendarColor }}
+                                    >
+                                        {event.calendarName}
+                                    </span>
+                                    <span className="event-account">{event.accountEmail}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Event Detail Modal */}
+            {selectedEvent && (
+                <EventModal event={selectedEvent} onClose={closeEventModal} />
             )}
         </div>
     );

@@ -32,6 +32,8 @@ export const initializeFirebase = () => {
         googleProvider = new GoogleAuthProvider();
         // Request Drive API scope for file access
         googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+        // Request Calendar API scope for calendar sync (readonly)
+        googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
     }
     return { app, auth, db };
 };
@@ -129,4 +131,119 @@ export const isGoogleAccessTokenExpired = (): boolean => {
     if (!expiresAt) return true;
     // Consider expired 5 minutes before actual expiration
     return Date.now() > (expiresAt - 5 * 60 * 1000);
+};
+
+// Add a secondary Google account for calendar sync
+// Note: This temporarily switches the Firebase user, then restores the original
+export const addSecondaryGoogleAccount = async (): Promise<{
+    accessToken: string;
+    email: string;
+    name: string;
+    photoUrl?: string;
+    expiresAt: number;
+} | null> => {
+    const { auth } = initializeFirebase();
+
+    // Save current primary user info before switching
+    const primaryUser = auth.currentUser;
+    const primaryToken = getGoogleAccessToken();
+    const primaryTokenExpiration = getGoogleAccessTokenExpiration();
+
+    if (!primaryUser) {
+        console.error('[Auth] No primary user to restore after secondary account');
+        return null;
+    }
+
+    // Create a new provider for the secondary account popup
+    const secondaryProvider = new GoogleAuthProvider();
+    secondaryProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+    // Force account selection - allow user to pick a DIFFERENT account
+    secondaryProvider.setCustomParameters({
+        prompt: 'select_account'
+    });
+
+    try {
+        // This will temporarily switch the Firebase user
+        const result = await signInWithPopup(auth, secondaryProvider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const secondaryAccessToken = credential?.accessToken;
+        const secondaryEmail = result.user.email;
+        const secondaryName = result.user.displayName || result.user.email || 'Secondary Account';
+        const secondaryPhoto = result.user.photoURL || undefined;
+
+        if (!secondaryAccessToken || !secondaryEmail) {
+            // Try to restore primary user
+            await reauthenticateWithPopup(primaryUser, googleProvider);
+            return null;
+        }
+
+        // Check if user selected the same account as primary
+        if (secondaryEmail === primaryUser.email) {
+            console.log('[Auth] User selected primary account again');
+            // Restore primary token
+            if (primaryToken) {
+                sessionStorage.setItem('googleAccessToken', primaryToken);
+                sessionStorage.setItem('googleAccessTokenExpiresAt', primaryTokenExpiration?.toString() || '');
+            }
+            return null;
+        }
+
+        const secondaryExpiresAt = Date.now() + TOKEN_LIFETIME_MS;
+
+        // Now we need to restore the primary user
+        // The secondary user is now signed in, we need to sign back in as primary
+        console.log('[Auth] Restoring primary user after secondary account capture...');
+        console.log('[Auth] Please select your primary account:', primaryUser.email);
+
+        // Create a provider specifically for restoring the primary user
+        // Use login_hint to suggest the primary account and prompt to force selection
+        const restoreProvider = new GoogleAuthProvider();
+        restoreProvider.addScope('https://www.googleapis.com/auth/drive.file');
+        restoreProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+        restoreProvider.setCustomParameters({
+            prompt: 'select_account',
+            login_hint: primaryUser.email || ''
+        });
+
+        // Re-authenticate primary user (will show popup again)
+        try {
+            const primaryResult = await signInWithPopup(auth, restoreProvider);
+            const primaryCredential = GoogleAuthProvider.credentialFromResult(primaryResult);
+
+            // Verify user selected the correct account
+            if (primaryResult.user.email !== primaryUser.email) {
+                console.warn('[Auth] User selected different account than primary. Session may be inconsistent.');
+            }
+
+            if (primaryCredential?.accessToken) {
+                storeAccessToken(primaryCredential.accessToken);
+                console.log('[Auth] Primary user restored successfully:', primaryResult.user.email);
+            }
+        } catch (restoreError) {
+            console.error('[Auth] Failed to restore primary user:', restoreError);
+            // Try to at least restore the token from session storage
+            if (primaryToken) {
+                sessionStorage.setItem('googleAccessToken', primaryToken);
+                sessionStorage.setItem('googleAccessTokenExpiresAt', primaryTokenExpiration?.toString() || '');
+            }
+        }
+
+        return {
+            accessToken: secondaryAccessToken,
+            email: secondaryEmail,
+            name: secondaryName,
+            photoUrl: secondaryPhoto,
+            expiresAt: secondaryExpiresAt
+        };
+    } catch (error) {
+        console.error('[Auth] Error adding secondary Google account:', error);
+
+        // Try to restore primary user if something went wrong
+        if (primaryToken) {
+            sessionStorage.setItem('googleAccessToken', primaryToken);
+            sessionStorage.setItem('googleAccessTokenExpiresAt', primaryTokenExpiration?.toString() || '');
+        }
+
+        return null;
+    }
 };
