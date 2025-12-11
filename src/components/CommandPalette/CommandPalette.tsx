@@ -288,6 +288,8 @@ export const CommandPalette = () => {
             case 'result':
                 if (item.result) {
                     selectObject(item.result.object.id);
+                    const { setCurrentSection } = useUIStore.getState();
+                    setCurrentSection('objects');
                     closeCommandPalette();
                 }
                 break;

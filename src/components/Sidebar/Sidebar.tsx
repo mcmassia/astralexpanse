@@ -168,7 +168,10 @@ export const Sidebar = () => {
                                             <div
                                                 key={obj.id}
                                                 className={`nav-item ${obj.id === selectedObjectId ? 'selected' : ''}`}
-                                                onClick={() => selectObject(obj.id)}
+                                                onClick={() => {
+                                                    selectObject(obj.id);
+                                                    setCurrentSection('objects');
+                                                }}
                                                 style={{ '--type-color': type.color } as React.CSSProperties}
                                             >
                                                 <span className="nav-item-title">{obj.title}</span>
