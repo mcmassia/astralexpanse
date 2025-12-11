@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
-import { formatDayHeader, formatDateISO, isSameDay } from './utils';
+import { formatDateISO, isSameDay } from './utils';
 import { QuickCreateBar } from './QuickCreateBar';
 import './Calendar.css';
 
@@ -52,8 +52,8 @@ export const DayView = () => {
     // Create daily note handler
     const handleCreateDailyNote = async () => {
         // Create with YYYY/MM/DD title and set date property
-        await createObject('daily', dailyNoteTitle, '', true);
-        // Note: createObject should set properties.date = dateStr for daily type
+        const dateStr = formatDateISO(selectedDate);
+        await createObject('daily', dailyNoteTitle, '', true, { date: dateStr });
     };
 
     // Open object and switch to objects view
@@ -67,19 +67,8 @@ export const DayView = () => {
         return objectTypes.find(t => t.id === typeId);
     };
 
-    const { dayName, fullDate, weekNumber } = formatDayHeader(selectedDate);
-
     return (
         <div className="day-view">
-            {/* Date Header */}
-            <div className="day-view-header">
-                <div className="day-view-day-name">{dayName}</div>
-                <div className="day-view-date">
-                    {fullDate}
-                    <span className="day-view-week">Semana {weekNumber}</span>
-                </div>
-            </div>
-
             {/* Quick Create Buttons */}
             <QuickCreateBar />
 
@@ -110,7 +99,7 @@ export const DayView = () => {
                         <div
                             className="daily-note-content"
                             dangerouslySetInnerHTML={{
-                                __html: dailyNote.content?.slice(0, 300) || '<em>Sin contenido</em>'
+                                __html: dailyNote.content || '<em>Sin contenido</em>'
                             }}
                         />
                     </div>

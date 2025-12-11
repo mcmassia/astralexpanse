@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
-import { formatDateISO, isToday, isSameDay, DAY_NAMES } from './utils';
+import { formatDateISO, isToday, DAY_NAMES } from './utils';
 import './Calendar.css';
 
 interface DayPanelProps {
@@ -19,20 +19,32 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
     const today = isToday(date);
     const dayOfWeek = (date.getDay() + 6) % 7; // Convert to Monday = 0
 
+    // Format title as YYYY/MM/DD to match daily note title format
+    const dailyNoteTitle = useMemo(() => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}/${month}/${day}`;
+    }, [date]);
+
     // Get daily note for this date
     const dailyNote = useMemo(() => {
         return objects.find(obj =>
             obj.type === 'daily' &&
-            (obj.properties.date === dateStr || obj.title.includes(dateStr))
+            (obj.properties.date === dateStr || obj.title === dailyNoteTitle || obj.title === dateStr)
         );
-    }, [objects, dateStr]);
+    }, [objects, dateStr, dailyNoteTitle]);
 
-    // Get objects created on this date (limit for compact view)
-    const createdObjects = useMemo(() => {
+    // Get objects with date property matching this date (NOT created on this date)
+    const dateReferences = useMemo(() => {
         return objects
-            .filter(obj => obj.type !== 'daily' && isSameDay(new Date(obj.createdAt), date))
+            .filter(obj => {
+                if (obj.type === 'daily') return false;
+                const dateValue = obj.properties.date || obj.properties.fecha;
+                return typeof dateValue === 'string' && dateValue === dateStr;
+            })
             .slice(0, compact ? 3 : 5);
-    }, [objects, date, compact]);
+    }, [objects, dateStr, compact]);
 
     // Handle click to navigate to day view
     const handleDayClick = () => {
@@ -43,13 +55,13 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
     // Create daily note handler
     const handleCreateDailyNote = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        const title = date.toLocaleDateString('es-ES', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-        await createObject('daily', title, '', true);
+        // Format title as YYYY/MM/DD to match DayView format
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const title = `${year}/${month}/${day}`;
+        const formattedDate = formatDateISO(date);
+        await createObject('daily', title, '', true, { date: formattedDate });
     };
 
     // Get type info
@@ -92,20 +104,20 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
                 </div>
             )}
 
-            {/* Daily Note Content Preview */}
-            {dailyNote && !compact && (
+            {/* Daily Note Content Preview - always show */}
+            {dailyNote && (
                 <div
                     className="day-panel-note-preview"
                     dangerouslySetInnerHTML={{
-                        __html: dailyNote.content?.slice(0, 100) || ''
+                        __html: dailyNote.content?.slice(0, compact ? 50 : 100) || ''
                     }}
                 />
             )}
 
-            {/* Objects Created This Day */}
-            {createdObjects.length > 0 && (
+            {/* Objects with date matching this day */}
+            {dateReferences.length > 0 && (
                 <div className="day-panel-objects">
-                    {createdObjects.map(obj => {
+                    {dateReferences.map(obj => {
                         const type = getTypeInfo(obj.type);
                         return (
                             <div

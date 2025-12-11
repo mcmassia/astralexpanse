@@ -161,7 +161,7 @@
 
 /* ===== Day View ===== */
 .day-view {
-    max-width: 800px;
+    width: 100%;
     animation: fadeIn 0.2s ease;
 }
 
