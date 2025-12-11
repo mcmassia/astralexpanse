@@ -1,7 +1,7 @@
 // Global state store for objects using Zustand
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { AstralObject, ObjectType } from '../types/object';
+import type { AstralObject, ObjectType, PropertyValue } from '../types/object';
 import { DEFAULT_OBJECT_TYPES } from '../types/object';
 import * as db from '../services/db';
 import * as drive from '../services/drive';
@@ -22,7 +22,7 @@ interface ObjectStore {
     selectObject: (id: string | null) => void;
 
     // Object CRUD Operations
-    createObject: (type: string, title: string, content?: string, autoSelect?: boolean) => Promise<AstralObject>;
+    createObject: (type: string, title: string, content?: string, autoSelect?: boolean, initialProperties?: Record<string, PropertyValue>) => Promise<AstralObject>;
     updateObject: (id: string, updates: Partial<AstralObject>) => Promise<void>;
     deleteObject: (id: string) => Promise<void>;
 
@@ -55,14 +55,14 @@ export const useObjectStore = create<ObjectStore>()(
         setObjectTypes: (types) => set({ objectTypes: types }),
         selectObject: (id) => set({ selectedObjectId: id }),
 
-        createObject: async (type, title, content = '', autoSelect = true) => {
+        createObject: async (type, title, content = '', autoSelect = true, initialProperties = {}) => {
             set({ isLoading: true, error: null });
             try {
                 const newObject = await db.createObject({
                     type,
                     title,
                     content,
-                    properties: {},
+                    properties: initialProperties,
                     tags: [],
                     links: [],
                     backlinks: [],
