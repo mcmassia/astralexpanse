@@ -329,3 +329,41 @@
         transform: rotate(360deg);
     }
 }
+
+/* Calendar Error */
+.calendar-error {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+}
+
+.calendar-error span {
+    font-size: 0.875rem;
+    color: #ef4444;
+}
+
+.refresh-token-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.refresh-token-btn:hover {
+    background: var(--accent-dark, #5556cd);
+    transform: translateY(-1px);
+}

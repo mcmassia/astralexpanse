@@ -17,11 +17,13 @@ export const CalendarSettings = ({ isOpen, onClose }: CalendarSettingsProps) => 
         isLoadingCalendars,
         syncConfig,
         error,
+        needsTokenRefresh,
         initialize,
         fetchCalendars,
         toggleCalendar,
         removeAccount,
         addSecondaryAccount,
+        refreshPrimaryToken,
     } = useCalendarStore();
 
     // Initialize on mount
@@ -137,10 +139,18 @@ export const CalendarSettings = ({ isOpen, onClose }: CalendarSettingsProps) => 
                             + Conectar otra cuenta de Google
                         </button>
 
-                        {/* Error Display */}
+                        {/* Error Display with Refresh Button */}
                         {error && (
-                            <div className="sync-status" style={{ color: 'var(--error)', marginTop: '0.5rem' }}>
-                                ⚠️ {error}
+                            <div className="calendar-error">
+                                <span>⚠️ {error}</span>
+                                {(needsTokenRefresh || error.includes('expired') || error.includes('invalid') || error.includes('Token')) && (
+                                    <button
+                                        className="refresh-token-btn"
+                                        onClick={refreshPrimaryToken}
+                                    >
+                                        🔄 Actualizar acceso
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

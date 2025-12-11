@@ -8,7 +8,13 @@ import type {
 } from '../types/calendar';
 import * as calendarService from '../services/calendar';
 import * as db from '../services/db';
-import { getGoogleAccessToken, getGoogleAccessTokenExpiration, addSecondaryGoogleAccount } from '../services/firebase';
+import {
+    getGoogleAccessToken,
+    getGoogleAccessTokenExpiration,
+    addSecondaryGoogleAccount,
+    refreshGoogleAccessToken,
+    isGoogleAccessTokenExpired
+} from '../services/firebase';
 import { getFirebaseAuth } from '../services/firebase';
 
 interface CalendarStore {
@@ -21,6 +27,7 @@ interface CalendarStore {
     isLoadingCalendars: boolean;
     error: string | null;
     initialized: boolean;
+    needsTokenRefresh: boolean; // Flag to indicate token needs refresh
 
     // Actions
     initialize: () => Promise<void>;
@@ -32,6 +39,7 @@ interface CalendarStore {
     syncEvents: (startDate: Date, endDate: Date) => Promise<void>;
     getEventsForDate: (date: Date) => CalendarEvent[];
     getEventsForDateRange: (startDate: Date, endDate: Date) => CalendarEvent[];
+    refreshPrimaryToken: () => Promise<boolean>;
 }
 
 export const useCalendarStore = create<CalendarStore>()((set, get) => ({
@@ -43,6 +51,7 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
     isLoadingCalendars: false,
     error: null,
     initialized: false,
+    needsTokenRefresh: false,
 
     initialize: async () => {
         if (get().initialized) return;
@@ -321,5 +330,50 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
 
             return eventStart <= endDate && eventEnd >= startDate;
         });
+    },
+
+    refreshPrimaryToken: async () => {
+        console.log('[CalendarStore] Refreshing primary account token...');
+        set({ error: null, needsTokenRefresh: false });
+
+        try {
+            // Check if token is really expired
+            if (!isGoogleAccessTokenExpired() && getGoogleAccessToken()) {
+                console.log('[CalendarStore] Token is still valid, updating account');
+                get().addPrimaryAccount();
+                return true;
+            }
+
+            // Try to refresh via popup
+            const result = await refreshGoogleAccessToken();
+
+            if (result.success) {
+                console.log('[CalendarStore] Token refreshed successfully');
+                // Update primary account with new token
+                get().addPrimaryAccount();
+
+                // Re-fetch calendars for primary account
+                const auth = getFirebaseAuth();
+                const user = auth.currentUser;
+                if (user?.email) {
+                    await get().fetchCalendars(user.email);
+                }
+
+                return true;
+            } else {
+                set({
+                    error: 'No se pudo refrescar el token. Por favor, cierra sesión y vuelve a iniciar.',
+                    needsTokenRefresh: true
+                });
+                return false;
+            }
+        } catch (error) {
+            console.error('[CalendarStore] Error refreshing token:', error);
+            set({
+                error: (error as Error).message,
+                needsTokenRefresh: true
+            });
+            return false;
+        }
     },
 }));
