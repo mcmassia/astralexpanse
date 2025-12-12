@@ -1,5 +1,5 @@
-// Sidebar component with navigation and object list
-import { useMemo, useState } from 'react';
+// Sidebar component with navigation menu
+import { useState, useMemo } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -24,7 +24,7 @@ export const Sidebar = () => {
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
     const [editingType, setEditingType] = useState<ObjectType | null>(null);
 
-    // Group objects by type (no filtering since search was removed)
+    // Group objects by type
     const groupedObjects = useMemo(() => {
         const groups: Record<string, typeof objects> = {};
         for (const obj of objects) {
@@ -63,6 +63,8 @@ export const Sidebar = () => {
     };
 
     const handleObjectsClick = () => {
+        // Clear selection to show ObjectsList
+        selectObject(null);
         setCurrentSection('objects');
     };
 
@@ -81,20 +83,20 @@ export const Sidebar = () => {
                     <div className="sidebar-logo collapsed">
                         <span className="logo-icon">✦</span>
                     </div>
-                    <div className="sidebar-collapsed-tabs">
+                    <div className="sidebar-collapsed-menu">
                         <button
-                            className={`sidebar-collapsed-tab ${currentSection === 'objects' ? 'active' : ''}`}
-                            onClick={handleObjectsClick}
-                            title="Objetos"
-                        >
-                            📄
-                        </button>
-                        <button
-                            className={`sidebar-collapsed-tab ${currentSection === 'calendar' ? 'active' : ''}`}
+                            className={`sidebar-collapsed-item ${currentSection === 'calendar' ? 'active' : ''}`}
                             onClick={handleCalendarClick}
                             title="Calendario"
                         >
                             📅
+                        </button>
+                        <button
+                            className={`sidebar-collapsed-item ${currentSection === 'objects' ? 'active' : ''}`}
+                            onClick={handleObjectsClick}
+                            title="Objetos"
+                        >
+                            📚
                         </button>
                     </div>
                     <div className="sidebar-collapsed-types">
@@ -138,34 +140,27 @@ export const Sidebar = () => {
                 </div>
             </div>
 
-            {/* Section Tabs */}
-            <div className="sidebar-tabs">
+            {/* Stacked Menu */}
+            <nav className="sidebar-menu">
                 <button
-                    className={`sidebar-tab ${currentSection === 'objects' ? 'active' : ''}`}
-                    onClick={handleObjectsClick}
-                >
-                    📄 Objetos
-                </button>
-                <button
-                    className={`sidebar-tab ${currentSection === 'calendar' ? 'active' : ''}`}
+                    className={`sidebar-menu-item ${currentSection === 'calendar' ? 'active' : ''}`}
                     onClick={handleCalendarClick}
                 >
-                    📅 Calendario
+                    <span className="menu-icon">📅</span>
+                    <span className="menu-label">Calendario</span>
                 </button>
-            </div>
-
-            <nav className="sidebar-nav">
-                {/* Add New Type Button */}
                 <button
-                    className="add-type-btn"
-                    onClick={() => {
-                        setEditingType(null);
-                        setIsTypeModalOpen(true);
-                    }}
+                    className={`sidebar-menu-item ${currentSection === 'objects' && !selectedObjectId ? 'active' : ''}`}
+                    onClick={handleObjectsClick}
                 >
-                    + Nuevo tipo de objeto
+                    <span className="menu-icon">📚</span>
+                    <span className="menu-label">Objetos</span>
+                    <span className="menu-count">{objects.length}</span>
                 </button>
+            </nav>
 
+            {/* Object Types Listing */}
+            <nav className="sidebar-nav">
                 {objectTypes.map(type => {
                     const typeObjects = groupedObjects[type.id] || [];
                     const isExpanded = expandedTypes.has(type.id);

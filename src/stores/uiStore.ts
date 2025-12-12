@@ -8,6 +8,13 @@ type CommandPaletteMode = 'quick' | 'extended';
 type CalendarView = 'day' | 'threeDays' | 'week' | 'month';
 type AppSection = 'objects' | 'calendar';
 
+// Navigation history item - tracks where user has been
+export interface NavHistoryItem {
+    section: AppSection;
+    objectId: string | null; // null means ObjectsList/Calendar view
+    timestamp: number;
+}
+
 interface ExtendedSearchFilters {
     typeFilters: string[];
     tagFilters: string[];
@@ -60,6 +67,10 @@ interface UIStore {
         propertiesPanelOpen: boolean;
     } | null;
 
+    // Global Navigation History
+    navHistory: NavHistoryItem[];
+    navHistoryIndex: number;
+
     // Actions
     setCurrentSection: (section: AppSection) => void;
     toggleSidebar: () => void;
@@ -100,6 +111,11 @@ interface UIStore {
     // Focus Mode actions
     toggleFocusMode: () => void;
     exitFocusMode: () => void;
+
+    // Global Navigation actions
+    pushNavHistory: (section: AppSection, objectId: string | null) => void;
+    goNavBack: () => void;
+    goNavForward: () => void;
 }
 
 const defaultExtendedFilters: ExtendedSearchFilters = {
@@ -142,6 +158,10 @@ export const useUIStore = create<UIStore>()(
             // Focus Mode defaults
             focusMode: false,
             preFocusState: null,
+
+            // Navigation History defaults
+            navHistory: [{ section: 'objects', objectId: null, timestamp: Date.now() }],
+            navHistoryIndex: 0,
 
             setCurrentSection: (section) => set({ currentSection: section }),
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -262,6 +282,45 @@ export const useUIStore = create<UIStore>()(
                     calendarSidebarOpen: s.preFocusState?.calendarSidebarOpen ?? true,
                     propertiesPanelOpen: s.preFocusState?.propertiesPanelOpen ?? true,
                     preFocusState: null,
+                };
+            }),
+
+            // Navigation History actions
+            pushNavHistory: (section, objectId) => set((s) => {
+                // Don't push if same as current
+                const current = s.navHistory[s.navHistoryIndex];
+                if (current && current.section === section && current.objectId === objectId) {
+                    return {};
+                }
+                // Truncate forward history
+                const newHistory = s.navHistory.slice(0, s.navHistoryIndex + 1);
+                newHistory.push({ section, objectId, timestamp: Date.now() });
+                // Keep max 50 items
+                if (newHistory.length > 50) newHistory.shift();
+                return {
+                    currentSection: section,
+                    navHistory: newHistory,
+                    navHistoryIndex: newHistory.length - 1,
+                };
+            }),
+
+            goNavBack: () => set((s) => {
+                if (s.navHistoryIndex <= 0) return {};
+                const newIndex = s.navHistoryIndex - 1;
+                const item = s.navHistory[newIndex];
+                return {
+                    currentSection: item.section,
+                    navHistoryIndex: newIndex,
+                };
+            }),
+
+            goNavForward: () => set((s) => {
+                if (s.navHistoryIndex >= s.navHistory.length - 1) return {};
+                const newIndex = s.navHistoryIndex + 1;
+                const item = s.navHistory[newIndex];
+                return {
+                    currentSection: item.section,
+                    navHistoryIndex: newIndex,
                 };
             }),
         }),

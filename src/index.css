@@ -104,6 +104,25 @@ body {
   position: relative;
 }
 
+/* Objects Layout - split view for list + detail */
+.objects-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.objects-layout>.objects-list {
+  width: 50%;
+  min-width: 400px;
+  max-width: 600px;
+  border-right: 1px solid var(--border-default);
+}
+
+.objects-layout>.object-view {
+  flex: 1;
+  overflow-y: auto;
+}
+
 /* Global Calendar Sidebar */
 .app-calendar-sidebar {
   width: 280px;

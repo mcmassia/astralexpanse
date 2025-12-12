@@ -135,6 +135,19 @@
     background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
 }
 
+.action-btn.nav {
+    font-size: 1.125rem;
+}
+
+.action-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+    background: transparent;
+}
+
 /* Backlinks */
 .object-backlinks {
     padding: 1rem 2rem;

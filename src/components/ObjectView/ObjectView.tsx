@@ -16,8 +16,16 @@ export const ObjectView = () => {
     const deleteObject = useObjectStore(s => s.deleteObject);
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
+    const goBack = useObjectStore(s => s.goBack);
+    const goForward = useObjectStore(s => s.goForward);
+    const historyIndex = useObjectStore(s => s.historyIndex);
+    const navigationHistory = useObjectStore(s => s.navigationHistory);
     const { focusMode, toggleFocusMode } = useUIStore();
     const toast = useToast();
+
+    // Reactive navigation state
+    const canGoBack = historyIndex > 0;
+    const canGoForward = historyIndex < navigationHistory.length - 1;
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleValue, setTitleValue] = useState('');
@@ -209,6 +217,22 @@ export const ObjectView = () => {
                 </div>
 
                 <div className="object-actions">
+                    <button
+                        className="action-btn nav"
+                        onClick={goBack}
+                        disabled={!canGoBack}
+                        title="Atrás"
+                    >
+                        ←
+                    </button>
+                    <button
+                        className="action-btn nav"
+                        onClick={goForward}
+                        disabled={!canGoForward}
+                        title="Adelante"
+                    >
+                        →
+                    </button>
                     <button
                         className={`action-btn focus ${focusMode ? 'active' : ''}`}
                         onClick={toggleFocusMode}

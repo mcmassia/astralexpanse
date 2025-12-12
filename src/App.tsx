@@ -6,10 +6,12 @@ import { useUIStore } from './stores/uiStore';
 import { useDriveStore } from './stores/driveStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
+import { ObjectsList } from './components/ObjectsList';
 import { Calendar } from './components/Calendar';
 import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
 import { ImportModal } from './components/Import/ImportModal';
+import { NavBar } from './components/NavBar';
 import { ToastProvider } from './components/common';
 import { getGoogleAccessTokenExpiration } from './services/firebase';
 import './index.css';
@@ -19,6 +21,8 @@ function App() {
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
   const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar, focusMode, toggleFocusMode, exitFocusMode } = useUIStore();
   const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
+  const selectedObjectId = useObjectStore((s) => s.selectedObjectId);
+  const selectObject = useObjectStore((s) => s.selectObject);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Initialize auth listener
@@ -153,6 +157,11 @@ function App() {
       case 'calendar':
         return <Calendar />;
       case 'objects':
+        // Objects view: show list when no object selected, detail when selected
+        if (selectedObjectId) {
+          return <ObjectView />;
+        }
+        return <ObjectsList onSelectObject={selectObject} />;
       default:
         return <ObjectView />;
     }
@@ -163,6 +172,7 @@ function App() {
     <ToastProvider>
       <div className="app">
         <Sidebar />
+        <NavBar />
         <main className="app-main">
           {renderContent()}
         </main>

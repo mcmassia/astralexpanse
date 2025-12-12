@@ -16,10 +16,20 @@ interface ObjectStore {
     isLoading: boolean;
     error: string | null;
 
+    // Navigation history
+    navigationHistory: string[];
+    historyIndex: number;
+
     // Actions
     setObjects: (objects: AstralObject[]) => void;
     setObjectTypes: (types: ObjectType[]) => void;
     selectObject: (id: string | null) => void;
+
+    // Navigation
+    goBack: () => void;
+    goForward: () => void;
+    canGoBack: () => boolean;
+    canGoForward: () => boolean;
 
     // Object CRUD Operations
     createObject: (type: string, title: string, content?: string, autoSelect?: boolean, initialProperties?: Record<string, PropertyValue>) => Promise<AstralObject>;
@@ -51,9 +61,59 @@ export const useObjectStore = create<ObjectStore>()(
         isLoading: false,
         error: null,
 
+        // Navigation history
+        navigationHistory: [],
+        historyIndex: -1,
+
         setObjects: (objects) => set({ objects }),
         setObjectTypes: (types) => set({ objectTypes: types }),
-        selectObject: (id) => set({ selectedObjectId: id }),
+        selectObject: (id) => {
+            if (id === null) {
+                set({ selectedObjectId: null });
+                return;
+            }
+            // Add to navigation history (only if different from current)
+            const state = get();
+            if (id !== state.selectedObjectId) {
+                // Truncate forward history if navigating to new object
+                const newHistory = state.navigationHistory.slice(0, state.historyIndex + 1);
+                newHistory.push(id);
+                // Keep max 50 items in history
+                if (newHistory.length > 50) newHistory.shift();
+                set({
+                    selectedObjectId: id,
+                    navigationHistory: newHistory,
+                    historyIndex: newHistory.length - 1,
+                });
+            }
+        },
+
+        goBack: () => {
+            const state = get();
+            if (state.historyIndex > 0) {
+                const newIndex = state.historyIndex - 1;
+                const objectId = state.navigationHistory[newIndex];
+                set({
+                    selectedObjectId: objectId,
+                    historyIndex: newIndex,
+                });
+            }
+        },
+
+        goForward: () => {
+            const state = get();
+            if (state.historyIndex < state.navigationHistory.length - 1) {
+                const newIndex = state.historyIndex + 1;
+                const objectId = state.navigationHistory[newIndex];
+                set({
+                    selectedObjectId: objectId,
+                    historyIndex: newIndex,
+                });
+            }
+        },
+
+        canGoBack: () => get().historyIndex > 0,
+        canGoForward: () => get().historyIndex < get().navigationHistory.length - 1,
 
         createObject: async (type, title, content = '', autoSelect = true, initialProperties = {}) => {
             set({ isLoading: true, error: null });
