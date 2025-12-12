@@ -289,6 +289,17 @@
   text-align: center;
 }
 
+.mention-type-badge {
+  flex-shrink: 0;
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+}
+
 .mention-item.new-item {
   border-top: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--success) 10%, transparent);

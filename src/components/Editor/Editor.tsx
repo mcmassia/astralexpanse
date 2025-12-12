@@ -103,10 +103,19 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 
         if (slashIndex > 0) {
             const typePart = lowerQuery.slice(0, slashIndex);
-            const matchingType = objectTypes.find(t =>
-                t.name.toLowerCase().startsWith(typePart) ||
-                t.id.toLowerCase().startsWith(typePart)
-            );
+            // Normalize accents for comparison (organizacion matches Organización)
+            const normalizeAccents = (str: string) =>
+                str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const normalizedTypePart = normalizeAccents(typePart);
+
+            const matchingType = objectTypes.find(t => {
+                const normalizedName = normalizeAccents(t.name);
+                const normalizedPlural = normalizeAccents(t.namePlural);
+                const normalizedId = normalizeAccents(t.id);
+                return normalizedName.startsWith(normalizedTypePart) ||
+                    normalizedPlural.startsWith(normalizedTypePart) ||
+                    normalizedId.startsWith(normalizedTypePart);
+            });
             if (matchingType) {
                 typeFilter = matchingType.id;
                 searchTerm = lowerQuery.slice(slashIndex + 1).trim();
@@ -127,7 +136,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                     id: obj.id,
                     label: obj.title,
                     type: obj.type,
-                    icon: type?.icon || '📄',
+                    typeName: type?.name?.toUpperCase() || 'OBJETO',
+                    icon: type?.icon || 'FileText',
                     color: type?.color || '#6366f1',
                     isNew: false,
                 };
@@ -149,7 +159,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                     id: `new:${typeFilter}:${formattedTitle}`,
                     label: `Crear "${formattedTitle}"`,
                     type: typeFilter,
-                    icon: type?.icon || '📄',
+                    typeName: type?.name?.toUpperCase() || 'OBJETO',
+                    icon: type?.icon || 'FileText',
                     color: type?.color || '#6366f1',
                     isNew: true,
                 });
@@ -284,7 +295,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                     render: () => {
                         let popup: HTMLDivElement | null = null;
                         let selectedIndex = 0;
-                        let items: Array<{ id: string; label: string; icon: string; color: string; type?: string; isNew?: boolean }> = [];
+                        let items: Array<{ id: string; label: string; icon: string; color: string; type?: string; typeName?: string; isNew?: boolean }> = [];
                         let commandFn: ((item: { id: string; label: string }) => void) | null = null;
 
                         const updatePopup = () => {
@@ -293,6 +304,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                                 ? '<div class="mention-empty">No se encontraron resultados</div>'
                                 : items.map((item, index) => `
                   <div class="mention-item ${index === selectedIndex ? 'selected' : ''} ${item.isNew ? 'new-item' : ''}" data-index="${index}">
+                    <span class="mention-type-badge" style="background-color: ${item.color}">${item.typeName || 'OBJETO'}</span>
                     <span class="mention-label">${item.label}</span>
                     ${item.isNew ? '<span class="mention-new-badge">+ Nuevo</span>' : ''}
                   </div>

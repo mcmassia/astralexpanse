@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { searchObjects, groupResultsByType, getAllTags } from '../../services/searchEngine';
 import { EventModal } from '../Calendar/EventModal';
+import { LucideIcon } from '../common';
 import type { CommandAction, SearchResult } from '../../types/object';
 import type { CalendarEvent } from '../../types/calendar';
 import './CommandPalette.css';
@@ -400,7 +401,8 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                                         onClick={() => toggleTypeFilter(type.id)}
                                         style={{ '--chip-color': type.color } as React.CSSProperties}
                                     >
-                                        {type.icon} {type.name}
+                                        <LucideIcon name={type.icon} size={14} color={type.color} />
+                                        {type.name}
                                     </button>
                                 ))}
                             </div>
@@ -457,7 +459,8 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                             return (
                                 <div key={typeId} className="command-group">
                                     <div className="command-group-header">
-                                        {type?.icon} {type?.namePlural || typeId}
+                                        <LucideIcon name={type?.icon || 'FileText'} size={16} color={type?.color} />
+                                        {type?.namePlural || typeId}
                                         <span className="command-group-count">{results.length}</span>
                                     </div>
                                     {results.map(sr => (
@@ -554,7 +557,9 @@ const CommandItem = ({
                 onClick={onClick}
                 style={{ '--type-color': type?.color } as React.CSSProperties}
             >
-                <span className="command-item-icon">{type?.icon || '📄'}</span>
+                <span className="command-item-icon">
+                    <LucideIcon name={type?.icon || 'FileText'} size={16} color={type?.color} />
+                </span>
                 <span className="command-item-label">Crear nuevo "{type?.name}"</span>
             </div>
         );
@@ -579,7 +584,9 @@ const CommandItem = ({
                 onClick={onClick}
                 style={{ '--type-color': type?.color } as React.CSSProperties}
             >
-                <span className="command-item-icon">{type?.icon || '📄'}</span>
+                <span className="command-item-icon">
+                    <LucideIcon name={type?.icon || 'FileText'} size={16} color={type?.color} />
+                </span>
                 <span className="command-item-label">
                     Crear <strong>{type?.name}</strong>: "{item.quickCreateName}"
                 </span>
@@ -651,7 +658,9 @@ const ResultItemComponent = ({
             onClick={onClick}
             style={{ '--type-color': type?.color } as React.CSSProperties}
         >
-            <span className="command-item-icon">{type?.icon || '📄'}</span>
+            <span className="command-item-icon">
+                <LucideIcon name={type?.icon || 'FileText'} size={16} color={type?.color} />
+            </span>
             <div className="command-item-content">
                 <div className="command-item-title">{result.object.title}</div>
                 {contentMatch && (
