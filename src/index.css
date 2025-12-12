@@ -102,6 +102,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  padding-top: 48px;
+  /* NavBar height */
 }
 
 /* Objects Layout - split view for list + detail */
@@ -126,6 +128,8 @@ body {
 /* Global Calendar Sidebar */
 .app-calendar-sidebar {
   width: 280px;
+  padding-top: 48px;
+  /* NavBar height */
   border-left: 1px solid var(--border-default);
   background: var(--bg-secondary);
   overflow-y: auto;

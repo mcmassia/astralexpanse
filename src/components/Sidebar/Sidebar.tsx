@@ -4,7 +4,6 @@ import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { TypeEditorModal } from '../TypeEditor';
-import { DriveStatus } from '../DriveStatus';
 import { useToast, LucideIcon } from '../common';
 import type { ObjectType } from '../../types/object';
 import './Sidebar.css';
@@ -17,10 +16,10 @@ export const Sidebar = () => {
     const createObject = useObjectStore(s => s.createObject);
 
     const { sidebarOpen, sidebarWidth, currentSection, setCurrentSection, setCalendarView, goToToday, toggleSidebar } = useUIStore();
-    const { user, signOut } = useAuthStore();
+    const { user } = useAuthStore();
     const toast = useToast();
 
-    const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['page']));
+    const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
     const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
     const [editingType, setEditingType] = useState<ObjectType | null>(null);
 
@@ -133,12 +132,6 @@ export const Sidebar = () => {
             >
                 ‹
             </button>
-            <div className="sidebar-header">
-                <div className="sidebar-logo">
-                    <span className="logo-icon">✦</span>
-                    <span className="logo-text">Astral Expanse</span>
-                </div>
-            </div>
 
             {/* Stacked Menu */}
             <nav className="sidebar-menu">
@@ -229,23 +222,6 @@ export const Sidebar = () => {
                 })}
             </nav>
 
-            <div className="sidebar-footer">
-                <div className="sidebar-user">
-                    {user?.photoURL && (
-                        <img src={user.photoURL} alt="" className="user-avatar" />
-                    )}
-                    <span className="user-name">{user?.displayName || user?.email}</span>
-                    <DriveStatus />
-                </div>
-                <button
-                    className="sidebar-footer-btn signout"
-                    onClick={signOut}
-                    title="Cerrar sesión"
-                >
-                    🚪
-                </button>
-            </div>
-
             <TypeEditorModal
                 isOpen={isTypeModalOpen}
                 onClose={() => {
@@ -254,6 +230,6 @@ export const Sidebar = () => {
                 }}
                 editingType={editingType}
             />
-        </aside>
+        </aside >
     );
 };

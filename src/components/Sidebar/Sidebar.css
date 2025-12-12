@@ -3,6 +3,8 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    padding-top: 48px;
+    /* NavBar height */
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-default);
     flex-shrink: 0;

@@ -201,7 +201,7 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
             event.description?.toLowerCase().includes(query) ||
             event.location?.toLowerCase().includes(query) ||
             event.calendarName.toLowerCase().includes(query)
-        ).slice(0, 5); // Limit to 5 calendar events
+        ).slice(0, 50); // Limit to 50 calendar events
     }, [calendarEvents, commandPaletteQuery, quickCreateMatch]);
 
     // Build unified list of items
@@ -227,7 +227,7 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
 
         // Add commands section (only in quick mode or when query matches)
         if (commandPaletteMode === 'quick' || query) {
-            for (const cmd of matchingCommands.slice(0, 4)) {
+            for (const cmd of matchingCommands.slice(0, 10)) {
                 result.push({
                     type: 'action',
                     id: cmd.id,
@@ -239,7 +239,7 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
         // Add create actions when typing "crear" or "nuevo" or query is empty
         const showCreate = !query || query.includes('crear') || query.includes('nuevo') || query.includes('new');
         if (showCreate && commandPaletteMode === 'quick') {
-            for (const createAction of createActions.slice(0, 3)) {
+            for (const createAction of createActions.slice(0, 8)) {
                 result.push(createAction);
             }
         }

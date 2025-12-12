@@ -5,7 +5,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { Editor } from '../Editor';
 import type { EditorRef } from '../Editor';
 import { PropertiesPanel } from './PropertiesPanel';
-import { ConfirmDialog, useToast } from '../common';
+import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import './ObjectView.css';
 
 export const ObjectView = () => {
@@ -277,7 +277,10 @@ export const ObjectView = () => {
                                     onClick={() => handleBacklinkClick(obj.id)}
                                     style={{ '--type-color': type?.color } as React.CSSProperties}
                                 >
-                                    <span className="backlink-icon">{type?.icon}</span>
+                                    <span className="backlink-type-badge" style={{ backgroundColor: type?.color }}>
+                                        {type?.name?.toUpperCase() || 'OBJETO'}
+                                    </span>
+                                    <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
                                     <span className="backlink-title">{obj.title}</span>
                                 </button>
                             );

@@ -3,6 +3,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { LucideIcon } from '../common';
 import { formatDateISO, isSameDay } from './utils';
 import { QuickCreateBar } from './QuickCreateBar';
 import { EventModal } from './EventModal';
@@ -184,7 +185,7 @@ export const DayView = () => {
                                     className="day-view-object-item"
                                     onClick={() => handleOpenObject(obj.id)}
                                 >
-                                    <span className="object-icon">{type?.icon || '📄'}</span>
+                                    <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
                                     <span className="object-title">{obj.title}</span>
                                     <span
                                         className="object-type-badge"
@@ -215,7 +216,7 @@ export const DayView = () => {
                                     className="day-view-object-item"
                                     onClick={() => handleOpenObject(obj.id)}
                                 >
-                                    <span className="object-icon">{type?.icon || '📄'}</span>
+                                    <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
                                     <span className="object-title">{obj.title}</span>
                                     <span
                                         className="object-type-badge"

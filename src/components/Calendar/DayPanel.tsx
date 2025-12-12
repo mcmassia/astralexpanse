@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { LucideIcon } from '../common';
 import type { CalendarEvent } from '../../types/calendar';
 import { EventModal } from './EventModal';
 import { formatDateISO, isToday, DAY_NAMES } from './utils';
@@ -148,7 +149,7 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
                                 }}
                                 style={{ '--type-color': type?.color } as React.CSSProperties}
                             >
-                                <span className="object-icon">{type?.icon}</span>
+                                <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
                                 <span className="object-title">{obj.title}</span>
                             </div>
                         );

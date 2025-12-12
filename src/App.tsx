@@ -4,6 +4,7 @@ import { useAuthStore } from './stores/authStore';
 import { useObjectStore } from './stores/objectStore';
 import { useUIStore } from './stores/uiStore';
 import { useDriveStore } from './stores/driveStore';
+import { useCalendarStore } from './stores/calendarStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
 import { ObjectsList } from './components/ObjectsList';
@@ -31,7 +32,7 @@ function App() {
     return () => unsubscribe();
   }, [initAuth]);
 
-  // Initialize objects and Drive state when user is authenticated
+  // Initialize objects, Drive state, and calendar when user is authenticated
   useEffect(() => {
     if (user) {
       initObjects();
@@ -41,6 +42,62 @@ function App() {
       if (expiresAt) {
         setTokenExpiration(expiresAt);
       }
+
+      // Initialize calendar store and sync events sequentially
+      const initCalendar = async () => {
+        const calendarStore = useCalendarStore.getState();
+        await calendarStore.initialize();
+
+        // Get fresh accounts after initialize (not cached reference)
+        const { accounts } = useCalendarStore.getState();
+        console.log('[App] Calendar accounts found:', accounts.length);
+
+        if (accounts.length === 0) {
+          console.log('[App] No calendar accounts, skipping sync');
+          return;
+        }
+
+        // Fetch calendars for each account
+        for (const account of accounts) {
+          console.log('[App] Fetching calendars for:', account.email);
+          await calendarStore.fetchCalendars(account.email);
+        }
+
+        // Check if any calendars are selected
+        const { syncConfig } = useCalendarStore.getState();
+        const hasSelectedCalendars = Object.values(syncConfig.selectedCalendars).some(
+          (ids) => ids && ids.length > 0
+        );
+
+        console.log('[App] Selected calendars:', syncConfig.selectedCalendars);
+        console.log('[App] Has selected calendars:', hasSelectedCalendars);
+
+        if (!hasSelectedCalendars) {
+          console.log('[App] No calendars selected, skipping sync');
+          return;
+        }
+
+        // Sequential sync: current month first, then expand outward
+        const now = new Date();
+
+        // 1. Sync current month first (priority)
+        const currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        await calendarStore.syncEvents(currentStart, currentEnd);
+
+        // 2. Expand to adjacent months (-1 to +1)
+        const adjacentStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const adjacentEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+        await calendarStore.syncEvents(adjacentStart, adjacentEnd);
+
+        // 3. Then sync 6 months back and forward for history (delayed)
+        setTimeout(async () => {
+          const wideStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          const wideEnd = new Date(now.getFullYear(), now.getMonth() + 6, 0);
+          await calendarStore.syncEvents(wideStart, wideEnd);
+        }, 2000); // Delay to allow UI to load first
+      };
+      initCalendar();
     }
   }, [user, initObjects, setTokenExpiration]);
 

@@ -193,9 +193,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             TableHeader,
             TableCell,
             Link.configure({
-                openOnClick: false,
+                openOnClick: true,
                 HTMLAttributes: {
                     class: 'editor-link',
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
                 },
             }),
             CodeBlockLowlight.configure({
