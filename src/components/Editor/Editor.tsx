@@ -21,6 +21,12 @@ import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { EditorToolbar } from './EditorToolbar';
+import {
+    parsePropertyAssignments,
+    convertPropertyValues,
+    formatPropertiesPreview,
+} from '../../utils/propertyAssignmentParser';
+import type { PropertyValue } from '../../types/object';
 import 'katex/dist/katex.min.css';
 import './Editor.css';
 
@@ -59,7 +65,7 @@ export interface EditorRef {
     getHTML: () => string;
 }
 
-// Parse "new:type:title" format
+// Parse "new:type:title" format (simple, no JSON)
 const parseNewItemId = (id: string): { type: string; title: string } | null => {
     if (!id.startsWith('new:')) return null;
     const withoutPrefix = id.slice(4);
@@ -90,22 +96,68 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
     const onCreateObjectRef = useRef(onCreateObject);
     onCreateObjectRef.current = onCreateObject;
 
+    // Store pending properties for new object creation (avoids JSON in IDs)
+    const pendingPropertiesRef = useRef<Record<string, PropertyValue>>({});
+
     // State for Cmd+K link modal
     const [linkModalOpen, setLinkModalOpen] = useState(false);
 
     const getSuggestionItems = useCallback(({ query }: { query: string }) => {
         const lowerQuery = query.toLowerCase().trim();
 
-        const slashIndex = lowerQuery.indexOf('/');
+        // Check for property assignment syntax (> for create with props)
+        let baseQuery = lowerQuery;
+        let rawProperties: Record<string, string> = {};
+        let valueSuggestions: Array<{ id: string; label: string; icon: string; color: string; type?: string; typeName?: string; isNew?: boolean; isValueSuggestion?: boolean }> = [];
+
+        // Handle > syntax - extract the base query and properties
+        const arrowIndex = query.indexOf('>');
+        if (arrowIndex > 0) {
+            baseQuery = query.slice(0, arrowIndex).trim().toLowerCase();
+            const propsStr = query.slice(arrowIndex + 1).trim();
+            if (propsStr) {
+                rawProperties = parsePropertyAssignments(propsStr);
+            }
+
+            // Check if we're typing a value after = (for autocomplete)
+            const equalsIndex = query.lastIndexOf('=');
+            if (equalsIndex > arrowIndex) {
+                // We're typing a property value - show matching objects as value suggestions
+                const partialValue = query.slice(equalsIndex + 1).trim().toLowerCase();
+
+                // Find objects that match the partial value (for value autocomplete)
+                valueSuggestions = objects
+                    .filter(obj => obj.title.toLowerCase().includes(partialValue))
+                    .slice(0, 5)
+                    .map(obj => {
+                        const type = objectTypes.find(t => t.id === obj.type);
+                        return {
+                            id: `value:${obj.id}:${obj.title}`,
+                            label: obj.title,
+                            type: obj.type,
+                            typeName: type?.name?.toUpperCase() || 'OBJETO',
+                            icon: type?.icon || 'FileText',
+                            color: type?.color || '#6366f1',
+                            isNew: false,
+                            isValueSuggestion: true,
+                        };
+                    });
+                // Don't return - continue to also include the Create option
+            }
+        }
+
+        // Normalize accents for comparison
+        const normalizeAccents = (str: string) =>
+            str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+        // Check for type/name format
+        const slashIndex = baseQuery.indexOf('/');
         let typeFilter: string | null = null;
-        let searchTerm = lowerQuery;
+        let searchTerm = baseQuery;
         let createNewTitle: string | null = null;
 
         if (slashIndex > 0) {
-            const typePart = lowerQuery.slice(0, slashIndex);
-            // Normalize accents for comparison (organizacion matches Organización)
-            const normalizeAccents = (str: string) =>
-                str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const typePart = baseQuery.slice(0, slashIndex);
             const normalizedTypePart = normalizeAccents(typePart);
 
             const matchingType = objectTypes.find(t => {
@@ -118,11 +170,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             });
             if (matchingType) {
                 typeFilter = matchingType.id;
-                searchTerm = lowerQuery.slice(slashIndex + 1).trim();
+                searchTerm = baseQuery.slice(slashIndex + 1).trim();
                 createNewTitle = searchTerm;
             }
         }
 
+        // Find matching existing objects
         const matchedObjects = objects
             .filter(obj => {
                 if (typeFilter && obj.type !== typeFilter) return false;
@@ -143,6 +196,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 };
             });
 
+        // Add create option if type/name syntax with no exact match
         if (typeFilter && createNewTitle && createNewTitle.length > 0) {
             const type = objectTypes.find(t => t.id === typeFilter);
             const exactMatch = matchedObjects.find(
@@ -155,9 +209,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ');
 
+                // Convert and store properties in ref (NOT in the ID!)
+                let propsPreview = '';
+                if (Object.keys(rawProperties).length > 0 && type) {
+                    const { properties } = convertPropertyValues(rawProperties, type, objects);
+                    pendingPropertiesRef.current = properties;
+                    propsPreview = formatPropertiesPreview(rawProperties, type);
+                } else {
+                    pendingPropertiesRef.current = {};
+                }
+
+                // Simple ID without JSON encoding
                 matchedObjects.push({
                     id: `new:${typeFilter}:${formattedTitle}`,
-                    label: `Crear "${formattedTitle}"`,
+                    label: propsPreview
+                        ? `Crear "${formattedTitle}" (${propsPreview})`
+                        : `Crear "${formattedTitle}"`,
                     type: typeFilter,
                     typeName: type?.name?.toUpperCase() || 'OBJETO',
                     icon: type?.icon || 'FileText',
@@ -166,8 +233,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 });
             }
         }
-
-        return matchedObjects;
+        // Combine value suggestions (if any) with matched objects
+        // Value suggestions appear first, then the create option
+        return [...valueSuggestions, ...matchedObjects];
     }, [objects, objectTypes]);
 
     const editor = useEditor({
@@ -299,6 +367,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                         let selectedIndex = 0;
                         let items: Array<{ id: string; label: string; icon: string; color: string; type?: string; typeName?: string; isNew?: boolean }> = [];
                         let commandFn: ((item: { id: string; label: string }) => void) | null = null;
+                        let currentEditor: any = null;
 
                         const updatePopup = () => {
                             if (!popup) return;
@@ -325,7 +394,41 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                             const item = items[index];
                             if (!item) return;
 
-                            // For existing objects - use the command normally (this works!)
+                            // For value suggestions (property autocomplete)
+                            // Insert the value into the query and update the popup
+                            if (item.id.startsWith('value:')) {
+                                const parts = item.id.split(':');
+                                const selectedTitle = parts.slice(2).join(':'); // Get the title part
+
+                                // We need to replace the partial value with the selected title
+                                // Find the current query from the editor and update it
+                                const state = currentEditor?.state;
+                                if (state) {
+                                    // Find the mention trigger position
+                                    const beforeText = state.doc.textBetween(Math.max(0, state.selection.from - 200), state.selection.from, '\n');
+                                    const atIndex = beforeText.lastIndexOf('@');
+                                    if (atIndex >= 0) {
+                                        const mentionText = beforeText.slice(atIndex + 1);
+                                        const equalsIndex = mentionText.lastIndexOf('=');
+                                        if (equalsIndex >= 0) {
+                                            // Build new query with selected value
+                                            const baseText = mentionText.slice(0, equalsIndex + 1);
+                                            const newQuery = baseText + ' ' + selectedTitle;
+
+                                            // Replace the text in editor
+                                            const startPos = state.selection.from - mentionText.length;
+                                            currentEditor?.chain().focus().deleteRange({ from: startPos, to: state.selection.from }).insertContent(newQuery).run();
+
+                                            // Close popup
+                                            popup?.remove();
+                                            popup = null;
+                                        }
+                                    }
+                                }
+                                return;
+                            }
+
+                            // For existing objects - use the command normally
                             if (!item.id.startsWith('new:')) {
                                 if (commandFn) {
                                     commandFn({ id: item.id, label: item.label });
@@ -333,16 +436,15 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                                 return;
                             }
 
-                            // For NEW objects - simplified flow
+                            // For NEW objects
                             if (isCreatingRef.current) return;
 
                             const parsed = parseNewItemId(item.id);
                             if (!parsed) return;
 
                             const { type, title } = parsed;
-                            const createFn = onCreateObjectRef.current;
-
-                            if (!createFn) return;
+                            // Get properties from ref (stored by getSuggestionItems)
+                            const properties = pendingPropertiesRef.current;
 
                             // Close popup
                             popup?.remove();
@@ -351,12 +453,18 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                             try {
                                 isCreatingRef.current = true;
 
-                                // Just create the object - don't try to insert mention
-                                // The user can write @name to reference it afterwards
-                                await createFn(type, title);
+                                // Create the object with properties if available
+                                // Don't auto-select (false) - stay in current document
+                                await createObject(type, title, '', false, properties);
 
-                                // Show a subtle notification that the object was created
-                                showNotification(`"${title}" creado. Escribe @${title.split(' ')[0]} para mencionarlo.`);
+                                // Clear pending properties
+                                pendingPropertiesRef.current = {};
+
+                                // Show notification
+                                const propsNote = Object.keys(properties).length > 0
+                                    ? ` con ${Object.keys(properties).length} propiedades`
+                                    : '';
+                                showNotification(`"${title}" creado${propsNote}. Escribe @${title.split(' ')[0]} para mencionarlo.`);
 
                             } catch (error) {
                                 console.error('Error creating object:', error);
@@ -368,6 +476,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 
                         return {
                             onStart: (props) => {
+                                currentEditor = props.editor;
                                 popup = document.createElement('div');
                                 popup.className = 'mention-popup';
                                 items = props.items as typeof items;

@@ -7,8 +7,15 @@ import { useCalendarStore } from '../../stores/calendarStore';
 import { searchObjects, groupResultsByType, getAllTags } from '../../services/searchEngine';
 import { EventModal } from '../Calendar/EventModal';
 import { LucideIcon } from '../common';
-import type { CommandAction, SearchResult } from '../../types/object';
+import type { CommandAction, SearchResult, PropertyValue, ObjectType } from '../../types/object';
 import type { CalendarEvent } from '../../types/calendar';
+import {
+    parseObjectCommand,
+    convertPropertyValues,
+    formatPropertiesPreview,
+    getRelationSuggestions,
+    type RelationSuggestion,
+} from '../../utils/propertyAssignmentParser';
 import './CommandPalette.css';
 
 interface ResultItem {
@@ -18,6 +25,10 @@ interface ResultItem {
     result?: SearchResult;
     createType?: string;
     quickCreateName?: string; // For @tipo/nombre syntax
+    quickCreateProperties?: Record<string, PropertyValue>; // For > prop = value syntax
+    quickCreatePropertiesPreview?: string; // Formatted preview string
+    isUpdate?: boolean; // True if updating existing object
+    existingObjectId?: string; // ID of existing object to update
     event?: CalendarEvent; // For calendar events
 }
 
@@ -46,11 +57,14 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
     const objectTypes = useObjectStore(s => s.objectTypes);
     const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
+    const updateObject = useObjectStore(s => s.updateObject);
 
     const calendarEvents = useCalendarStore(s => s.events);
 
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+    const [suggestionIndex, setSuggestionIndex] = useState(0);
+    const [localQuery, setLocalQuery] = useState(''); // Local copy for suggestions
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -156,23 +170,43 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
         }));
     }, [objectTypes]);
 
-    // Parse @tipo/nombre syntax for quick object creation
-    const quickCreateMatch = useMemo(() => {
-        const match = commandPaletteQuery.match(/^@([^/]+)\/(.+)$/);
-        if (match) {
-            const [, typeInput, name] = match;
-            const typeLower = typeInput.toLowerCase();
-            const matchedType = objectTypes.find(t =>
-                t.id.toLowerCase() === typeLower ||
-                t.name.toLowerCase() === typeLower ||
-                t.namePlural.toLowerCase() === typeLower
-            );
-            if (matchedType && name.trim()) {
-                return { type: matchedType, name: name.trim() };
-            }
-        }
-        return null;
-    }, [commandPaletteQuery, objectTypes]);
+    // Parse @tipo/nombre > prop = value syntax for quick object creation with properties
+
+    let quickCreateMatch: {
+        type: ObjectType | null;
+        name: string;
+        properties: Record<string, PropertyValue>;
+        rawProperties: Record<string, string>;
+        isUpdate: boolean;
+        existingObjectId?: string;
+    } | null = null;
+
+    const parsed = parseObjectCommand(commandPaletteQuery, objectTypes, objects);
+    if (parsed) {
+        const { properties } = convertPropertyValues(
+            parsed.properties,
+            parsed.type,
+            objects
+        );
+
+        quickCreateMatch = {
+            type: parsed.type,
+            name: parsed.name,
+            properties,
+            rawProperties: parsed.properties,
+            isUpdate: parsed.isUpdate,
+            existingObjectId: parsed.existingObject?.id,
+        };
+    }
+
+    // Get relation suggestions for autocomplete (uses local state for reliability)
+    const { relationContext, relationSuggestions } = useMemo(() => {
+        const context = getRelationSuggestions(localQuery, objectTypes, objects);
+        return {
+            relationContext: context,
+            relationSuggestions: context?.suggestions ?? []
+        };
+    }, [localQuery, objectTypes, objects]);
 
     // Search results
     const searchResults = useMemo(() => {
@@ -211,11 +245,19 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
 
         // If @tipo/nombre syntax detected, show quick create option first
         if (quickCreateMatch) {
+            const propsPreview = Object.keys(quickCreateMatch.rawProperties).length > 0
+                ? formatPropertiesPreview(quickCreateMatch.rawProperties, quickCreateMatch.type)
+                : undefined;
+
             result.push({
                 type: 'quickCreate',
                 id: 'quick-create',
-                createType: quickCreateMatch.type.id,
+                createType: quickCreateMatch.type?.id,
                 quickCreateName: quickCreateMatch.name,
+                quickCreateProperties: quickCreateMatch.properties,
+                quickCreatePropertiesPreview: propsPreview,
+                isUpdate: quickCreateMatch.isUpdate,
+                existingObjectId: quickCreateMatch.existingObjectId,
             });
             return result;
         }
@@ -288,8 +330,44 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
         }
     }, [commandPaletteOpen]);
 
+    // Handle selecting a relation suggestion (insert into input)
+    const handleSelectSuggestion = useCallback((suggestion: RelationSuggestion) => {
+        if (!relationContext) return;
+
+        // Replace partial value with the selected object title
+        const beforeEquals = commandPaletteQuery.slice(0, relationContext.insertPosition);
+        const newQuery = beforeEquals + ' ' + suggestion.title;
+        setCommandPaletteQuery(newQuery);
+        setSuggestionIndex(0);
+    }, [relationContext, commandPaletteQuery, setCommandPaletteQuery]);
+
     // Keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        // If we have relation suggestions, prioritize them
+        if (relationSuggestions.length > 0) {
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    setSuggestionIndex(i => Math.min(i + 1, relationSuggestions.length - 1));
+                    return;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    setSuggestionIndex(i => Math.max(i - 1, 0));
+                    return;
+                case 'Tab':
+                case 'Enter':
+                    e.preventDefault();
+                    const suggestion = relationSuggestions[suggestionIndex];
+                    if (suggestion) handleSelectSuggestion(suggestion);
+                    return;
+                case 'Escape':
+                    e.preventDefault();
+                    closeCommandPalette();
+                    return;
+            }
+        }
+
+        // Normal navigation for command palette items
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
@@ -309,7 +387,7 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                 closeCommandPalette();
                 break;
         }
-    }, [items, selectedIndex, closeCommandPalette]);
+    }, [items, selectedIndex, closeCommandPalette, relationSuggestions, suggestionIndex, handleSelectSuggestion]);
 
     // Handle item selection
     const handleSelectItem = async (item: ResultItem) => {
@@ -325,8 +403,26 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                 }
                 break;
             case 'quickCreate':
-                if (item.createType && item.quickCreateName) {
-                    await createObject(item.createType, item.quickCreateName);
+                if (item.isUpdate && item.existingObjectId && item.quickCreateProperties) {
+                    // Update existing object
+                    await updateObject(item.existingObjectId, {
+                        properties: {
+                            ...objects.find(o => o.id === item.existingObjectId)?.properties,
+                            ...item.quickCreateProperties,
+                        },
+                    });
+                    // Don't auto-select/navigate, just close
+                    closeCommandPalette();
+                } else if (item.createType && item.quickCreateName) {
+                    // Create new object with optional properties
+                    // DON'T auto-select (false) - stay on current view
+                    await createObject(
+                        item.createType,
+                        item.quickCreateName,
+                        '',
+                        false,  // Don't auto-select
+                        item.quickCreateProperties || {}
+                    );
                     closeCommandPalette();
                 }
                 break;
@@ -375,16 +471,51 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                         className="command-input"
                         placeholder={isExtended ? "Buscar en todos los objetos..." : "Buscar o ejecutar comando..."}
                         value={commandPaletteQuery}
-                        onChange={e => setCommandPaletteQuery(e.target.value)}
+                        onChange={e => {
+                            const val = e.target.value;
+                            setCommandPaletteQuery(val);
+                            setLocalQuery(val);
+                        }}
                         onKeyDown={handleKeyDown}
                     />
                     {commandPaletteQuery && (
                         <button
                             className="command-clear"
-                            onClick={() => setCommandPaletteQuery('')}
+                            onClick={() => {
+                                setCommandPaletteQuery('');
+                                setLocalQuery('');
+                            }}
                         >
                             ✕
                         </button>
+                    )}
+
+                    {/* Relation suggestions dropdown */}
+                    {relationSuggestions.length > 0 && (
+                        <div className="relation-suggestions">
+                            <div className="relation-suggestions-header">
+                                Selecciona un objeto:
+                            </div>
+                            {relationSuggestions.map((suggestion, index) => (
+                                <div
+                                    key={suggestion.id}
+                                    className={`relation-suggestion-item ${index === suggestionIndex ? 'selected' : ''}`}
+                                    onClick={() => handleSelectSuggestion(suggestion)}
+                                    onMouseEnter={() => setSuggestionIndex(index)}
+                                >
+                                    {suggestion.typeColor && (
+                                        <span
+                                            className="suggestion-type-dot"
+                                            style={{ backgroundColor: suggestion.typeColor }}
+                                        />
+                                    )}
+                                    <span className="suggestion-title">{suggestion.title}</span>
+                                    {suggestion.typeName && (
+                                        <span className="suggestion-type-name">{suggestion.typeName}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </div>
 
@@ -576,25 +707,39 @@ const CommandItem = ({
         );
     }
 
-    if (item.type === 'quickCreate' && item.createType && item.quickCreateName) {
-        const type = objectTypes.find(t => t.id === item.createType);
+    if (item.type === 'quickCreate' && item.quickCreateName) {
+        const type = item.createType ? objectTypes.find(t => t.id === item.createType) : null;
+        const isUpdate = item.isUpdate;
+        const hasProps = item.quickCreatePropertiesPreview;
+
         return (
             <div
-                className={`command-item quick-create ${isSelected ? 'selected' : ''}`}
+                className={`command-item quick-create ${isSelected ? 'selected' : ''} ${isUpdate ? 'update' : ''}`}
                 onClick={onClick}
-                style={{ '--type-color': type?.color } as React.CSSProperties}
+                style={{ '--type-color': type?.color || '#6366f1' } as React.CSSProperties}
             >
                 <span className="command-item-icon">
-                    <LucideIcon name={type?.icon || 'FileText'} size={16} color={type?.color} />
+                    <LucideIcon name={isUpdate ? 'Pencil' : (type?.icon || 'FileText')} size={16} color={type?.color || '#6366f1'} />
                 </span>
-                <span className="command-item-label">
-                    Crear <strong>{type?.name}</strong>: "{item.quickCreateName}"
-                </span>
+                <div className="command-item-content">
+                    <span className="command-item-label">
+                        {isUpdate ? (
+                            <>Actualizar <strong>{item.quickCreateName}</strong></>
+                        ) : (
+                            <>Crear <strong>{type?.name || 'objeto'}</strong>: "{item.quickCreateName}"</>
+                        )}
+                    </span>
+                    {hasProps && (
+                        <span className="command-item-props">
+                            {item.quickCreatePropertiesPreview}
+                        </span>
+                    )}
+                </div>
                 <span
                     className="command-item-badge"
-                    style={{ backgroundColor: type?.color }}
+                    style={{ backgroundColor: type?.color || '#6366f1' }}
                 >
-                    + Nuevo
+                    {isUpdate ? '✎ Editar' : '+ Nuevo'}
                 </span>
             </div>
         );
