@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import type { ObjectType, PropertyDefinition, PropertyType } from '../../types/object';
 import { useObjectStore } from '../../stores/objectStore';
-import { useToast } from '../common';
+import { useToast, IconPicker, LucideIcon } from '../common';
 import './TypeEditorModal.css';
 
 interface TypeEditorModalProps {
@@ -27,9 +27,7 @@ const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
     { value: 'tags', label: 'Etiquetas' },
 ];
 
-const EMOJI_SUGGESTIONS = ['📄', '👤', '📚', '💡', '🎯', '📅', '🏢', '📍', '🎬', '🎵', '🖼️', '🔗', '📝', '⭐', '🏷️', '📊', '💼', '🎓', '🏠', '🚗'];
-
-const COLOR_SUGGESTIONS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#3b82f6', '#14b8a6', '#f97316', '#84cc16'];
+const COLOR_SUGGESTIONS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#3b82f6', '#14b8a6', '#f97316', '#84cc16', '#06b6d4', '#a855f7'];
 
 export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModalProps) => {
     const createObjectType = useObjectStore(s => s.createObjectType);
@@ -58,7 +56,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
         } else {
             setName('');
             setNamePlural('');
-            setIcon('📄');
+            setIcon('FileText');
             setColor('#6366f1');
             setProperties([]);
             setTemplate('');
@@ -160,22 +158,11 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                             <div className="icon-color-row">
                                 <div className="field-group">
                                     <label>Icono</label>
-                                    <div className="emoji-selector">
-                                        <button className="emoji-current" style={{ borderColor: color }}>
-                                            {icon}
-                                        </button>
-                                        <div className="emoji-dropdown">
-                                            {EMOJI_SUGGESTIONS.map(emoji => (
-                                                <button
-                                                    key={emoji}
-                                                    className={`emoji-option ${icon === emoji ? 'selected' : ''}`}
-                                                    onClick={() => setIcon(emoji)}
-                                                >
-                                                    {emoji}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <IconPicker
+                                        selectedIcon={icon}
+                                        color={color}
+                                        onSelect={setIcon}
+                                    />
                                 </div>
 
                                 <div className="field-group">
@@ -311,7 +298,8 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                                                                         });
                                                                     }}
                                                                 />
-                                                                <span>{t.icon} {t.name}</span>
+                                                                <LucideIcon name={t.icon} size={14} color={t.color} />
+                                                                <span>{t.name}</span>
                                                             </label>
                                                         );
                                                     })}
@@ -352,7 +340,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                                                                 <option value="">Seleccionar tipo...</option>
                                                                 {objectTypes.map(t => (
                                                                     <option key={t.id} value={t.id}>
-                                                                        {t.icon} {t.name}
+                                                                        {t.name}
                                                                     </option>
                                                                 ))}
                                                             </select>

@@ -1,0 +1,111 @@
+/* IconPicker Styles */
+.icon-picker {
+    position: relative;
+}
+
+.icon-picker-trigger {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-default);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.icon-picker-trigger:hover {
+    background: var(--bg-hover);
+}
+
+.icon-picker-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.5rem;
+    width: 320px;
+    max-height: 400px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.icon-picker-search {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.icon-picker-search input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.icon-picker-search input:focus {
+    border-color: var(--accent-primary);
+}
+
+.icon-picker-search input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+    padding: 0.5rem;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.icon-option {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    color: var(--text-secondary);
+}
+
+.icon-option:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.icon-option.selected {
+    background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+    color: var(--accent-primary);
+}
+
+.icon-picker-more {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-align: center;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-tertiary);
+}
+
+.icon-picker-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}

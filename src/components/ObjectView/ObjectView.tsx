@@ -183,8 +183,7 @@ export const ObjectView = () => {
         <div className="object-view" onClick={handleMentionClick}>
             <header className="object-header">
                 <div className="object-type-badge" style={{ '--type-color': objectType?.color } as React.CSSProperties}>
-                    <span className="type-icon">{objectType?.icon}</span>
-                    <span className="type-name">{objectType?.name}</span>
+                    <span className="type-name">{objectType?.name.toUpperCase()}</span>
                 </div>
 
                 {isEditingTitle ? (

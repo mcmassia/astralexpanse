@@ -362,7 +362,7 @@ const PropertyInput = ({ definition, value, currentObject, currentObjectType, on
                                                 }
                                             }}
                                         >
-                                            {relType?.icon || '📄'} {rel.title}
+                                            {rel.title}
                                             <button
                                                 className="relation-remove"
                                                 onClick={(e) => {
@@ -487,7 +487,7 @@ const PropertyInput = ({ definition, value, currentObject, currentObjectType, on
                                             }
                                         }}
                                     >
-                                        {relType?.icon || '📄'} {rel.title}
+                                        {rel.title}
                                     </span>
                                 );
                             })}

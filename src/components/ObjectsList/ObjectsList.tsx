@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { useObjectStore, useSelectedObject } from '../../stores/objectStore';
 import { TypeEditorModal } from '../TypeEditor';
-import { ConfirmDialog, useToast } from '../common';
+import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import type { AstralObject, ObjectType } from '../../types/object';
 import './ObjectsList.css';
 
@@ -186,7 +186,8 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
                                 onClick={() => toggleTypeFilter(type.id)}
                                 style={{ '--chip-color': type.color } as React.CSSProperties}
                             >
-                                {type.icon} {type.name}
+                                <LucideIcon name={type.icon} size={12} color={selectedTypes.has(type.id) ? 'white' : type.color} />
+                                {type.name}
                             </button>
                         ))}
                     </div>
@@ -271,7 +272,7 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
                                                 className="type-badge"
                                                 style={{ '--type-color': type?.color } as React.CSSProperties}
                                             >
-                                                {type?.icon} {type?.name}
+                                                {type?.name}
                                             </span>
                                         </td>
                                         <td className="col-title">

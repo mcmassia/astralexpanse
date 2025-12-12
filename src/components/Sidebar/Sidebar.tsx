@@ -5,7 +5,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { TypeEditorModal } from '../TypeEditor';
 import { DriveStatus } from '../DriveStatus';
-import { useToast } from '../common';
+import { useToast, LucideIcon } from '../common';
 import type { ObjectType } from '../../types/object';
 import './Sidebar.css';
 
@@ -172,7 +172,7 @@ export const Sidebar = () => {
                                 onClick={() => toggleType(type.id)}
                             >
                                 <span className="nav-section-icon">{isExpanded ? '▼' : '▶'}</span>
-                                <span className="nav-section-emoji">{type.icon}</span>
+                                <LucideIcon name={type.icon} size={16} color={type.color} />
                                 <span className="nav-section-title">{type.namePlural}</span>
                                 <span className="nav-section-count">{typeObjects.length}</span>
                                 <button

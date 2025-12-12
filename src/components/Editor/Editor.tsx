@@ -293,7 +293,6 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                                 ? '<div class="mention-empty">No se encontraron resultados</div>'
                                 : items.map((item, index) => `
                   <div class="mention-item ${index === selectedIndex ? 'selected' : ''} ${item.isNew ? 'new-item' : ''}" data-index="${index}">
-                    <span class="mention-icon">${item.icon}</span>
                     <span class="mention-label">${item.label}</span>
                     ${item.isNew ? '<span class="mention-new-badge">+ Nuevo</span>' : ''}
                   </div>
@@ -416,7 +415,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                             'data-mention-label': node.attrs.label || obj?.title || 'Unknown',
                             style: `--mention-color: ${type?.color || '#6366f1'}`,
                         },
-                        `${type?.icon || '📄'} ${node.attrs.label || obj?.title || 'Unknown'}`,
+                        node.attrs.label || obj?.title || 'Unknown',
                     ];
                 },
             }),

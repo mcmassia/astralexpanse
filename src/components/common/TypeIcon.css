@@ -1,0 +1,5 @@
+/* TypeIcon - Flat document-style icon */
+.type-icon {
+    flex-shrink: 0;
+    color: var(--icon-color, var(--text-tertiary));
+}
