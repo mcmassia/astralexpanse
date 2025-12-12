@@ -1,5 +1,5 @@
 // Tasks Widget - Shows tasks grouped by due date
-import type { AstralObject, ObjectType } from '../../../types/object';
+import type { AstralObject, ObjectType, PropertyValue } from '../../../types/object';
 import { LucideIcon } from '../../common';
 
 interface TasksWidgetProps {
@@ -13,6 +13,17 @@ interface TaskGroup {
     tasks: AstralObject[];
     isOverdue?: boolean;
 }
+
+// Helper to safely extract date from property value
+const getDateFromProperty = (value: PropertyValue | undefined): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'string' || typeof value === 'number') {
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? null : date;
+    }
+    return null;
+};
 
 export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidgetProps) => {
     // Find task type (by name 'tarea' or id 'task')
@@ -52,9 +63,6 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const in5Days = new Date(today);
     in5Days.setDate(in5Days.getDate() + 5);
 
@@ -70,13 +78,14 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
 
     pendingTasks.forEach(task => {
         const dueDateValue = task.properties.dueDate || task.properties.fecha || task.properties.date;
-        if (!dueDateValue) {
+        const dueDate = getDateFromProperty(dueDateValue);
+
+        if (!dueDate) {
             // Tasks without due date go to today
             todayTasks.push(task);
             return;
         }
 
-        const dueDate = new Date(dueDateValue as string | Date);
         dueDate.setHours(0, 0, 0, 0);
 
         if (dueDate < today && dueDate >= oneWeekAgo) {
@@ -88,12 +97,15 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
         }
     });
 
+    // Sort function for tasks by date
+    const sortByDueDate = (a: AstralObject, b: AstralObject): number => {
+        const dateA = getDateFromProperty(a.properties.dueDate || a.properties.fecha || a.properties.date);
+        const dateB = getDateFromProperty(b.properties.dueDate || b.properties.fecha || b.properties.date);
+        return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+    };
+
     if (overdue.length > 0) {
-        overdue.sort((a, b) => {
-            const dateA = new Date(a.properties.dueDate || a.properties.fecha || a.properties.date as string);
-            const dateB = new Date(b.properties.dueDate || b.properties.fecha || b.properties.date as string);
-            return dateA.getTime() - dateB.getTime();
-        });
+        overdue.sort(sortByDueDate);
         groups.push({ label: 'Vencidas', tasks: overdue, isOverdue: true });
     }
 
@@ -102,11 +114,7 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
     }
 
     if (upcoming.length > 0) {
-        upcoming.sort((a, b) => {
-            const dateA = new Date(a.properties.dueDate || a.properties.fecha || a.properties.date as string);
-            const dateB = new Date(b.properties.dueDate || b.properties.fecha || b.properties.date as string);
-            return dateA.getTime() - dateB.getTime();
-        });
+        upcoming.sort(sortByDueDate);
         groups.push({ label: 'Próximos 5 días', tasks: upcoming });
     }
 
@@ -114,9 +122,8 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
 
     const formatDueDate = (task: AstralObject) => {
         const dueDateValue = task.properties.dueDate || task.properties.fecha || task.properties.date;
-        if (!dueDateValue) return '';
-
-        const date = new Date(dueDateValue as string | Date);
+        const date = getDateFromProperty(dueDateValue);
+        if (!date) return '';
         return date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' });
     };
 

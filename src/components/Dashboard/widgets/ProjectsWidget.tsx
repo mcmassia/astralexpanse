@@ -67,7 +67,14 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
             if (!projectProp) return false;
 
             if (Array.isArray(projectProp)) {
-                return projectProp.some((rel: { id: string }) => rel.id === project.id);
+                return projectProp.some((rel) => {
+                    // Handle both string IDs and relation objects {id, title}
+                    if (typeof rel === 'string') return rel === project.id;
+                    if (typeof rel === 'object' && rel !== null && 'id' in rel) {
+                        return (rel as { id: string }).id === project.id;
+                    }
+                    return false;
+                });
             }
             return false;
         });
