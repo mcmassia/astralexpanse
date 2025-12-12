@@ -6,7 +6,7 @@ type SidebarTab = 'objects' | 'types' | 'search';
 type Theme = 'light' | 'dark' | 'system';
 type CommandPaletteMode = 'quick' | 'extended';
 type CalendarView = 'day' | 'threeDays' | 'week' | 'month';
-type AppSection = 'objects' | 'calendar';
+type AppSection = 'dashboard' | 'objects' | 'calendar';
 
 // Navigation history item - tracks where user has been
 export interface NavHistoryItem {
@@ -129,7 +129,7 @@ const defaultExtendedFilters: ExtendedSearchFilters = {
 export const useUIStore = create<UIStore>()(
     persist(
         (set) => ({
-            currentSection: 'objects',
+            currentSection: 'dashboard',
             sidebarOpen: true,
             sidebarTab: 'objects',
             sidebarWidth: 280,
@@ -160,7 +160,7 @@ export const useUIStore = create<UIStore>()(
             preFocusState: null,
 
             // Navigation History defaults
-            navHistory: [{ section: 'objects', objectId: null, timestamp: Date.now() }],
+            navHistory: [{ section: 'dashboard', objectId: null, timestamp: Date.now() }],
             navHistoryIndex: 0,
 
             setCurrentSection: (section) => set({ currentSection: section }),

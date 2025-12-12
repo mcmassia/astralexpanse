@@ -84,6 +84,13 @@ export const Sidebar = () => {
                     </div>
                     <div className="sidebar-collapsed-menu">
                         <button
+                            className={`sidebar-collapsed-item ${currentSection === 'dashboard' ? 'active' : ''}`}
+                            onClick={() => setCurrentSection('dashboard')}
+                            title="Inicio"
+                        >
+                            🏠
+                        </button>
+                        <button
                             className={`sidebar-collapsed-item ${currentSection === 'calendar' ? 'active' : ''}`}
                             onClick={handleCalendarClick}
                             title="Calendario"
@@ -135,6 +142,13 @@ export const Sidebar = () => {
 
             {/* Stacked Menu */}
             <nav className="sidebar-menu">
+                <button
+                    className={`sidebar-menu-item ${currentSection === 'dashboard' ? 'active' : ''}`}
+                    onClick={() => setCurrentSection('dashboard')}
+                >
+                    <span className="menu-icon">🏠</span>
+                    <span className="menu-label">Inicio</span>
+                </button>
                 <button
                     className={`sidebar-menu-item ${currentSection === 'calendar' ? 'active' : ''}`}
                     onClick={handleCalendarClick}

@@ -8,6 +8,7 @@ import { useCalendarStore } from './stores/calendarStore';
 import { Sidebar } from './components/Sidebar';
 import { ObjectView } from './components/ObjectView';
 import { ObjectsList } from './components/ObjectsList';
+import { Dashboard } from './components/Dashboard';
 import { Calendar } from './components/Calendar';
 import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
@@ -211,6 +212,8 @@ function App() {
     }
 
     switch (currentSection) {
+      case 'dashboard':
+        return <Dashboard />;
       case 'calendar':
         return <Calendar />;
       case 'objects':
