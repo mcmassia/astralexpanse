@@ -53,12 +53,19 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
     );
 
     // Find the deadline property ID from type definition
-    const deadlineProp = projectType.properties.find(p =>
-        p.name.toLowerCase().includes('fecha') && p.name.toLowerCase().includes('límite') ||
-        p.name.toLowerCase() === 'deadline' ||
-        p.id.toLowerCase().includes('fechalimite') ||
-        p.id.toLowerCase() === 'deadline'
-    );
+    // Must specifically be "Fecha límite" or "deadline", NOT "Fecha inicio" or similar
+    const deadlineProp = projectType.properties.find(p => {
+        const nameLower = p.name.toLowerCase();
+        const nameNormalized = nameLower.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove accents
+
+        // Must contain "límite" or "limite" (without accent) in the name
+        const hasLimite = nameNormalized.includes('limite') || nameLower.includes('límite');
+
+        // Or be exactly "deadline"
+        const isDeadline = nameLower === 'deadline';
+
+        return hasLimite || isDeadline;
+    });
 
     // Allowed status values for projects (case insensitive)
     const ACTIVE_STATUS_VALUES = ['activo', 'en pausa', 'active', 'paused', 'on hold'];
