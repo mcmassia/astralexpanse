@@ -53,14 +53,29 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
     // Get all tasks
     const allTasks = objects.filter(obj => obj.type === taskType.id);
 
-    // Active status values (tasks that should appear in dashboard)
-    const ACTIVE_STATUS_VALUES = ['nueva', 'activa', 'en ello', 'pendiente', 'new', 'active', 'in progress'];
+    // Find the status property ID from type definition (could be "Estado", "status", etc.)
+    const statusProp = taskType.properties.find(p =>
+        p.name.toLowerCase() === 'estado' ||
+        p.name.toLowerCase() === 'status' ||
+        p.id.toLowerCase() === 'status'
+    );
+
+    // Exact status values that should appear in dashboard (case insensitive)
+    const ACTIVE_STATUS_VALUES = ['nueva', 'activa', 'en ello', 'new', 'active', 'in progress'];
 
     // Filter to only show open/active tasks
     const pendingTasks = allTasks.filter(task => {
-        const status = task.properties.status as string | undefined;
-        if (!status) return true; // Show tasks without status
-        return ACTIVE_STATUS_VALUES.some(s => status.toLowerCase().includes(s));
+        if (!statusProp) return true; // If no status property defined, show all
+
+        const statusValue = task.properties[statusProp.id];
+        // Show tasks with empty/undefined status
+        if (!statusValue || (typeof statusValue === 'string' && statusValue.trim() === '')) return true;
+
+        // Check if status is in allowed values
+        if (typeof statusValue === 'string') {
+            return ACTIVE_STATUS_VALUES.includes(statusValue.toLowerCase().trim());
+        }
+        return false; // Non-string status values are excluded
     });
 
     // Get today's date bounds
