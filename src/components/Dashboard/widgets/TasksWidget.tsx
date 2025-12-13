@@ -53,10 +53,14 @@ export const TasksWidget = ({ objects, objectTypes, onObjectClick }: TasksWidget
     // Get all tasks
     const allTasks = objects.filter(obj => obj.type === taskType.id);
 
-    // Filter out completed tasks
+    // Active status values (tasks that should appear in dashboard)
+    const ACTIVE_STATUS_VALUES = ['nueva', 'activa', 'en ello', 'pendiente', 'new', 'active', 'in progress'];
+
+    // Filter to only show open/active tasks
     const pendingTasks = allTasks.filter(task => {
         const status = task.properties.status as string | undefined;
-        return status !== 'Completada' && status !== 'Completado';
+        if (!status) return true; // Show tasks without status
+        return ACTIVE_STATUS_VALUES.some(s => status.toLowerCase().includes(s));
     });
 
     // Get today's date bounds
