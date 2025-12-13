@@ -45,11 +45,39 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
         );
     }
 
-    // Get active/paused projects
+    // Find the status property ID from type definition (could be "Estado", "status", etc.)
+    const statusProp = projectType.properties.find(p =>
+        p.name.toLowerCase() === 'estado' ||
+        p.name.toLowerCase() === 'status' ||
+        p.id.toLowerCase() === 'status'
+    );
+
+    // Find the deadline property ID from type definition
+    const deadlineProp = projectType.properties.find(p =>
+        p.name.toLowerCase().includes('fecha') && p.name.toLowerCase().includes('límite') ||
+        p.name.toLowerCase() === 'deadline' ||
+        p.id.toLowerCase().includes('fechalimite') ||
+        p.id.toLowerCase() === 'deadline'
+    );
+
+    // Allowed status values for projects (case insensitive)
+    const ACTIVE_STATUS_VALUES = ['activo', 'en pausa', 'active', 'paused', 'on hold'];
+
+    // Get active/paused projects only
     const activeProjects = objects.filter(obj => {
         if (obj.type !== projectType.id) return false;
-        const status = obj.properties.status as string | undefined;
-        return status === 'Activo' || status === 'En pausa' || !status;
+
+        if (!statusProp) return true; // If no status property, show all projects
+
+        const statusValue = obj.properties[statusProp.id];
+        // Show projects without status
+        if (!statusValue || (typeof statusValue === 'string' && statusValue.trim() === '')) return true;
+
+        // Check if status is in allowed values
+        if (typeof statusValue === 'string') {
+            return ACTIVE_STATUS_VALUES.includes(statusValue.toLowerCase().trim());
+        }
+        return false;
     });
 
     // Calculate progress for each project
@@ -92,23 +120,36 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
 
     // Sort: active first, then by progress
     const sortedProjects = [...projectsWithProgress].sort((a, b) => {
-        const statusA = a.project.properties.status as string | undefined;
-        const statusB = b.project.properties.status as string | undefined;
+        if (!statusProp) return b.progress - a.progress;
 
-        if (statusA === 'Activo' && statusB !== 'Activo') return -1;
-        if (statusA !== 'Activo' && statusB === 'Activo') return 1;
+        const statusA = a.project.properties[statusProp.id] as string | undefined;
+        const statusB = b.project.properties[statusProp.id] as string | undefined;
+
+        const isActiveA = statusA?.toLowerCase() === 'activo';
+        const isActiveB = statusB?.toLowerCase() === 'activo';
+
+        if (isActiveA && !isActiveB) return -1;
+        if (!isActiveA && isActiveB) return 1;
 
         return b.progress - a.progress;
     }).slice(0, 5);
 
     const formatDeadline = (project: AstralObject) => {
-        const deadline = project.properties.deadline || project.properties.fechaLimite || project.properties['fecha límite'];
+        if (!deadlineProp) return null;
+
+        const deadline = project.properties[deadlineProp.id];
         if (!deadline) return null;
+        if (typeof deadline !== 'string' && !(deadline instanceof Date)) return null;
 
         const date = new Date(deadline as string | Date);
+        if (isNaN(date.getTime())) return null;
+
         const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        date.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((date.getTime() - now.getTime()) / 86400000);
 
+        // Only show VENCIDO when fecha límite is in the past (< today)
         if (diffDays < 0) return { text: `Vencido hace ${Math.abs(diffDays)}d`, isOverdue: true };
         if (diffDays === 0) return { text: 'Hoy', isOverdue: false };
         if (diffDays <= 7) return { text: `En ${diffDays}d`, isOverdue: false };
