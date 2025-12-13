@@ -63,21 +63,22 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
     // Allowed status values for projects (case insensitive)
     const ACTIVE_STATUS_VALUES = ['activo', 'en pausa', 'active', 'paused', 'on hold'];
 
-    // Get active/paused projects only
+    // Get active/paused projects only (require explicit status)
     const activeProjects = objects.filter(obj => {
         if (obj.type !== projectType.id) return false;
 
-        if (!statusProp) return true; // If no status property, show all projects
+        if (!statusProp) return true; // If no status property defined in type, show all
 
         const statusValue = obj.properties[statusProp.id];
-        // Show projects without status
-        if (!statusValue || (typeof statusValue === 'string' && statusValue.trim() === '')) return true;
+
+        // DON'T show projects without status - require explicit Activo or En pausa
+        if (!statusValue || typeof statusValue !== 'string') return false;
+
+        const trimmedStatus = statusValue.trim().toLowerCase();
+        if (trimmedStatus === '' || trimmedStatus === 'seleccionar...' || trimmedStatus === 'seleccionar') return false;
 
         // Check if status is in allowed values
-        if (typeof statusValue === 'string') {
-            return ACTIVE_STATUS_VALUES.includes(statusValue.toLowerCase().trim());
-        }
-        return false;
+        return ACTIVE_STATUS_VALUES.includes(trimmedStatus);
     });
 
     // Calculate progress for each project
@@ -140,6 +141,17 @@ export const ProjectsWidget = ({ objects, objectTypes, onObjectClick }: Projects
         const deadline = project.properties[deadlineProp.id];
         if (!deadline) return null;
         if (typeof deadline !== 'string' && !(deadline instanceof Date)) return null;
+
+        // Check for placeholder/empty date formats
+        const deadlineStr = String(deadline).trim();
+        if (!deadlineStr ||
+            deadlineStr === '' ||
+            deadlineStr.includes('YYYY') ||
+            deadlineStr.includes('MM') ||
+            deadlineStr.includes('DD') ||
+            deadlineStr === 'Invalid Date') {
+            return null;
+        }
 
         const date = new Date(deadline as string | Date);
         if (isNaN(date.getTime())) return null;
