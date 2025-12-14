@@ -303,7 +303,7 @@ const PropertyInput = ({ definition, value, currentObject, currentObjectType, on
                     ? objects
                     : objects.filter(o => relationTypeIds.includes(o.type));
 
-                const currentRelations = (value as { id: string; title: string }[]) || [];
+                const currentRelations = Array.isArray(value) ? (value as { id: string; title: string }[]) : [];
                 const selectedIds = currentRelations.map(r => r.id);
 
                 // Group objects by type for better UX
