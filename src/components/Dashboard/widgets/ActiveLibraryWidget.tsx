@@ -1,4 +1,4 @@
-// Active Library Widget - Shows items being read/watched/followed
+// Lecturas Widget - Shows books being read or to be read
 import type { AstralObject, ObjectType } from '../../../types/object';
 import { LucideIcon } from '../../common';
 
@@ -8,90 +8,100 @@ interface ActiveLibraryWidgetProps {
     onObjectClick: (id: string) => void;
 }
 
-// Status values that indicate active consumption
-const ACTIVE_STATUS_VALUES = [
-    'leyendo', 'viendo', 'siguiendo', 'en progreso', 'en curso',
-    'reading', 'watching', 'following', 'in progress'
-];
+// Status values for books that should appear
+const READING_STATUS_VALUES = ['leyendo', 'para leer', 'reading', 'to read'];
 
 export const ActiveLibraryWidget = ({ objects, objectTypes, onObjectClick }: ActiveLibraryWidgetProps) => {
-    // Find types that have status-like properties with "reading" type states
-    // Primary: Libro (book)
+    // Find the book type
     const bookType = objectTypes.find(t =>
         t.id === 'book' || t.name.toLowerCase() === 'libro'
     );
 
-    // Find all objects with active consumption status
-    const activeItems = objects.filter(obj => {
-        const type = objectTypes.find(t => t.id === obj.type);
-        if (!type) return false;
-
-        // Check if any property that looks like a status has an active value
-        const statusProps = type.properties.filter(p =>
-            p.type === 'select' &&
-            (p.name.toLowerCase().includes('estado') || p.name.toLowerCase() === 'status')
+    if (!bookType) {
+        return (
+            <div className="dashboard-widget">
+                <div className="dashboard-widget-header">
+                    <h3 className="dashboard-widget-title">
+                        <span className="dashboard-widget-icon">📚</span>
+                        Lecturas
+                    </h3>
+                </div>
+                <div className="dashboard-widget-empty">
+                    <span className="dashboard-widget-empty-icon">⚠️</span>
+                    <span className="dashboard-widget-empty-text">
+                        Tipo "Libro" no configurado
+                    </span>
+                </div>
+            </div>
         );
+    }
 
-        return statusProps.some(prop => {
-            const value = obj.properties[prop.id];
-            if (typeof value !== 'string') return false;
-            return ACTIVE_STATUS_VALUES.some(status =>
-                value.toLowerCase().includes(status)
-            );
-        });
+    // Find the Estado property in book type
+    const statusProp = bookType.properties.find(p =>
+        p.name.toLowerCase() === 'estado' ||
+        p.name.toLowerCase() === 'status' ||
+        p.id.toLowerCase() === 'status'
+    );
+
+    // Filter books with Estado = Leyendo or Para leer
+    const readingBooks = objects.filter(obj => {
+        // Must be book type
+        if (obj.type !== bookType.id) return false;
+
+        if (!statusProp) return false;
+
+        const statusValue = obj.properties[statusProp.id];
+        if (!statusValue || typeof statusValue !== 'string') return false;
+
+        const statusLower = statusValue.toLowerCase().trim();
+        return READING_STATUS_VALUES.includes(statusLower);
     });
 
-    // Sort: books first, then by updatedAt
-    const sortedItems = [...activeItems].sort((a, b) => {
-        const isABook = a.type === bookType?.id;
-        const isBBook = b.type === bookType?.id;
-        if (isABook && !isBBook) return -1;
-        if (!isABook && isBBook) return 1;
+    // Sort: "Leyendo" first, then by updatedAt
+    const sortedBooks = [...readingBooks].sort((a, b) => {
+        const statusA = statusProp ? (a.properties[statusProp.id] as string)?.toLowerCase() : '';
+        const statusB = statusProp ? (b.properties[statusProp.id] as string)?.toLowerCase() : '';
+
+        const isAReading = statusA === 'leyendo' || statusA === 'reading';
+        const isBReading = statusB === 'leyendo' || statusB === 'reading';
+
+        if (isAReading && !isBReading) return -1;
+        if (!isAReading && isBReading) return 1;
+
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     }).slice(0, 6);
 
-    const getTypeInfo = (typeId: string) => objectTypes.find(t => t.id === typeId);
-
     const getStatus = (obj: AstralObject) => {
-        const type = objectTypes.find(t => t.id === obj.type);
-        if (!type) return null;
-
-        const statusProp = type.properties.find(p =>
-            p.type === 'select' &&
-            (p.name.toLowerCase().includes('estado') || p.name.toLowerCase() === 'status')
-        );
-
-        if (statusProp) {
-            return obj.properties[statusProp.id] as string | undefined;
-        }
-        return null;
+        if (!statusProp) return null;
+        return obj.properties[statusProp.id] as string | undefined;
     };
 
     return (
         <div className="dashboard-widget">
             <div className="dashboard-widget-header">
                 <h3 className="dashboard-widget-title">
-                    <span className="dashboard-widget-icon">📚</span>
-                    Biblioteca Activa
+                    <span className="dashboard-widget-icon">
+                        <LucideIcon name={bookType.icon || 'Book'} size={16} color={bookType.color} />
+                    </span>
+                    Lecturas
                 </h3>
-                {activeItems.length > 0 && (
+                {readingBooks.length > 0 && (
                     <span className="dashboard-widget-count">
-                        {activeItems.length}
+                        {readingBooks.length}
                     </span>
                 )}
             </div>
 
-            {sortedItems.length === 0 ? (
+            {sortedBooks.length === 0 ? (
                 <div className="dashboard-widget-empty">
                     <span className="dashboard-widget-empty-icon">📖</span>
                     <span className="dashboard-widget-empty-text">
-                        Nada en curso
+                        Sin libros en lectura
                     </span>
                 </div>
             ) : (
                 <div className="dashboard-widget-list">
-                    {sortedItems.map(obj => {
-                        const type = getTypeInfo(obj.type);
+                    {sortedBooks.map(obj => {
                         const status = getStatus(obj);
 
                         return (
@@ -101,22 +111,19 @@ export const ActiveLibraryWidget = ({ objects, objectTypes, onObjectClick }: Act
                                 onClick={() => onObjectClick(obj.id)}
                             >
                                 <span className="dashboard-widget-item-icon">
-                                    <LucideIcon name={type?.icon || 'Book'} size={16} color={type?.color} />
+                                    <LucideIcon name={bookType.icon || 'Book'} size={16} color={bookType.color} />
                                 </span>
                                 <div className="dashboard-widget-item-content">
                                     <div className="dashboard-widget-item-title">
                                         {obj.title || 'Sin título'}
-                                    </div>
-                                    <div className="dashboard-widget-item-meta">
-                                        {type?.name}
                                     </div>
                                 </div>
                                 {status && (
                                     <span
                                         className="dashboard-widget-item-badge"
                                         style={{
-                                            background: `color-mix(in srgb, ${type?.color || 'var(--accent-primary)'} 20%, transparent)`,
-                                            color: type?.color || 'var(--accent-primary)'
+                                            background: `color-mix(in srgb, ${bookType.color || 'var(--accent-primary)'} 20%, transparent)`,
+                                            color: bookType.color || 'var(--accent-primary)'
                                         }}
                                     >
                                         {status}
