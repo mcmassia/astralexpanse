@@ -68,6 +68,12 @@ export interface PropertyDefinition {
   };
 }
 
+// Base properties that all object types should have
+export const BASE_PROPERTIES: PropertyDefinition[] = [
+  { id: 'seguimiento', name: 'Seguimiento', type: 'boolean', defaultValue: false },
+  { id: 'favorito', name: 'Favorito', type: 'boolean', defaultValue: false },
+];
+
 // Default object types
 export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
   {

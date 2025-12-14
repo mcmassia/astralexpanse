@@ -6,7 +6,7 @@ import { FavoritesWidget } from './widgets/FavoritesWidget';
 import { InboxWidget } from './widgets/InboxWidget';
 import { DailyNoteWidget } from './widgets/DailyNoteWidget';
 import { TasksWidget } from './widgets/TasksWidget';
-import { ProjectsWidget } from './widgets/ProjectsWidget';
+import { SeguimientoWidget } from './widgets/SeguimientoWidget';
 import { RecentlyModifiedWidget } from './widgets/RecentlyModifiedWidget';
 import { ActiveLibraryWidget } from './widgets/ActiveLibraryWidget';
 import { OrphansWidget } from './widgets/OrphansWidget';
@@ -71,7 +71,7 @@ export const Dashboard = () => {
                             objectTypes={objectTypes}
                             onObjectClick={handleObjectClick}
                         />
-                        <ProjectsWidget
+                        <SeguimientoWidget
                             objects={objects}
                             objectTypes={objectTypes}
                             onObjectClick={handleObjectClick}

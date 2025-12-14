@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { AstralObject, ObjectType, PropertyValue } from '../types/object';
-import { DEFAULT_OBJECT_TYPES } from '../types/object';
+import { DEFAULT_OBJECT_TYPES, BASE_PROPERTIES } from '../types/object';
 import * as db from '../services/db';
 import * as drive from '../services/drive';
 import { DriveAuthError } from '../services/drive';
@@ -292,9 +292,15 @@ export const useObjectStore = create<ObjectStore>()(
         createObjectType: async (typeData) => {
             try {
                 const id = typeData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+                // Ensure base properties are included
+                const existingPropIds = typeData.properties.map(p => p.id);
+                const missingBaseProps = BASE_PROPERTIES.filter(bp => !existingPropIds.includes(bp.id));
+
                 const newType: ObjectType = {
                     ...typeData,
                     id,
+                    properties: [...typeData.properties, ...missingBaseProps],
                 };
                 await db.saveObjectType(newType);
                 // The Firestore subscription will update the store
@@ -422,14 +428,40 @@ export const useObjectStore = create<ObjectStore>()(
             set({ isLoading: true, error: null });
             try {
                 // Load object types from Firestore or use defaults
-                const types = await db.getObjectTypes();
+                let types = await db.getObjectTypes();
                 if (types.length === 0) {
-                    // Initialize with default types
-                    for (const type of DEFAULT_OBJECT_TYPES) {
+                    // Initialize with default types, adding base properties
+                    const typesWithBaseProps = DEFAULT_OBJECT_TYPES.map(type => ({
+                        ...type,
+                        properties: [...type.properties, ...BASE_PROPERTIES],
+                    }));
+                    for (const type of typesWithBaseProps) {
                         await db.saveObjectType(type);
                     }
-                    set({ objectTypes: DEFAULT_OBJECT_TYPES });
+                    set({ objectTypes: typesWithBaseProps });
                 } else {
+                    // Migration: ensure all types have base properties
+                    let needsUpdate = false;
+                    types = types.map(type => {
+                        const existingPropIds = type.properties.map(p => p.id);
+                        const missingBaseProps = BASE_PROPERTIES.filter(bp => !existingPropIds.includes(bp.id));
+                        if (missingBaseProps.length > 0) {
+                            needsUpdate = true;
+                            return {
+                                ...type,
+                                properties: [...type.properties, ...missingBaseProps],
+                            };
+                        }
+                        return type;
+                    });
+
+                    // Save updated types if needed
+                    if (needsUpdate) {
+                        for (const type of types) {
+                            await db.saveObjectType(type);
+                        }
+                    }
+
                     set({ objectTypes: types });
                 }
 
