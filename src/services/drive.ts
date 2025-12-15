@@ -164,6 +164,10 @@ export const objectToMarkdown = (obj: AstralObject): string => {
         .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
         .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
         .replace(/<br\s*\/?>/gi, '\n')
+        // Convert img tags to markdown image syntax
+        .replace(/<img[^>]*src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>/gi, '![$2]($1)')
+        .replace(/<img[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '![$1]($2)')
+        .replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '![]($1)')
         .replace(/<[^>]+>/g, '') // Remove remaining HTML tags
         .trim();
 
@@ -230,4 +234,94 @@ export const deleteFromDrive = async (fileId: string): Promise<void> => {
 // Check if Drive token is present (basic check)
 export const isDriveConnected = (): boolean => {
     return !!getGoogleAccessToken() && !isGoogleAccessTokenExpired();
+};
+
+// Images folder cache
+let imagesFolderId: string | null = null;
+
+// Get or create the Images folder inside Astral Expanse
+export const getOrCreateImagesFolder = async (): Promise<string> => {
+    if (imagesFolderId) return imagesFolderId;
+
+    const parentId = await getOrCreateRootFolder();
+
+    // Search for existing Images folder
+    const searchUrl = `${DRIVE_API_BASE}/files?q=name='Imagenes' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`;
+    const searchResponse = await driveFetch(searchUrl);
+    const searchData = await searchResponse.json();
+
+    if (searchData.files?.length > 0) {
+        imagesFolderId = searchData.files[0].id;
+        return imagesFolderId!;
+    }
+
+    // Create new Images folder
+    const createResponse = await driveFetch(`${DRIVE_API_BASE}/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: 'Imagenes',
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentId],
+        }),
+    });
+
+    const createData = await createResponse.json();
+    imagesFolderId = createData.id;
+    return imagesFolderId!;
+};
+
+// Upload an image to Drive and return a public URL
+export const uploadImageToDrive = async (file: File): Promise<{ fileId: string; url: string }> => {
+    const folderId = await getOrCreateImagesFolder();
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[/\\?%*:|"<>]/g, '-');
+    const fileName = `${timestamp}-${safeName}`;
+
+    const metadata = {
+        name: fileName,
+        mimeType: file.type,
+        parents: [folderId],
+    };
+
+    // Upload the file
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', file);
+
+    const uploadResponse = await driveFetch(
+        `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,webContentLink`,
+        { method: 'POST', body: formData }
+    );
+    const uploadData = await uploadResponse.json();
+    const fileId = uploadData.id;
+
+    // Set file to be publicly readable (anyone with the link)
+    await driveFetch(`${DRIVE_API_BASE}/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            role: 'reader',
+            type: 'anyone',
+        }),
+    });
+
+    // Return the direct access URL
+    const url = `https://drive.google.com/uc?id=${fileId}`;
+    return { fileId, url };
+};
+
+// Delete an image from Drive by URL or fileId
+export const deleteImageFromDrive = async (urlOrId: string): Promise<void> => {
+    let fileId = urlOrId;
+
+    // Extract fileId from Drive URL if needed
+    const match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) {
+        fileId = match[1];
+    }
+
+    await driveFetch(`${DRIVE_API_BASE}/files/${fileId}`, { method: 'DELETE' });
 };

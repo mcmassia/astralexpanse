@@ -1,7 +1,9 @@
 // EditorToolbar component for formatting actions
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import { LinkModal } from './LinkModal';
+import { ImageModal } from './ImageModal';
+import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import './EditorToolbar.css';
 
 interface EditorToolbarProps {
@@ -12,6 +14,9 @@ interface EditorToolbarProps {
 
 export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: EditorToolbarProps) {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [showImageDropdown, setShowImageDropdown] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Handle external open request (from Cmd+K)
     useEffect(() => {
@@ -72,6 +77,35 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
     const insertMermaidBlock = () => {
         // Use the MermaidBlock extension command
         (editor.chain().focus() as any).setMermaidBlock().run();
+    };
+
+    // Image insertion handlers
+    const handleImageUrlConfirm = (url: string, alt?: string) => {
+        editor.chain().focus().setImage({ src: url, alt: alt || '' }).run();
+        setIsImageModalOpen(false);
+    };
+
+    const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!isDriveConnected()) {
+            alert('Conecta con Google Drive para subir imágenes');
+            return;
+        }
+
+        try {
+            const { url } = await uploadImageToDrive(file);
+            editor.chain().focus().setImage({ src: url }).run();
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Error al subir imagen');
+        }
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
     };
 
     const currentLinkUrl = editor.getAttributes('link').href || '';
@@ -247,6 +281,45 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                     >
                         ◇
                     </button>
+                    <div className="toolbar-image-dropdown">
+                        <button
+                            type="button"
+                            onClick={() => setShowImageDropdown(!showImageDropdown)}
+                            className={editor.isActive('image') ? 'is-active' : ''}
+                            title="Insertar imagen"
+                        >
+                            🖼️
+                        </button>
+                        {showImageDropdown && (
+                            <div className="image-dropdown-menu">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowImageDropdown(false);
+                                        setIsImageModalOpen(true);
+                                    }}
+                                >
+                                    Insertar URL
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowImageDropdown(false);
+                                        fileInputRef.current?.click();
+                                    }}
+                                >
+                                    Subir imagen
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                        style={{ display: 'none' }}
+                    />
                 </div>
 
                 {/* Table controls - only show when inside a table */}
@@ -317,6 +390,13 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                 onRemove={currentLinkUrl ? handleLinkRemove : undefined}
                 onCancel={handleLinkCancel}
             />
+
+            <ImageModal
+                isOpen={isImageModalOpen}
+                onConfirm={handleImageUrlConfirm}
+                onCancel={() => setIsImageModalOpen(false)}
+            />
         </>
     );
 }
+

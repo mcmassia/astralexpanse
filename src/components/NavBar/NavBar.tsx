@@ -45,6 +45,7 @@ export const NavBar = () => {
     const goNavForward = useUIStore(s => s.goNavForward);
     const pushNavHistory = useUIStore(s => s.pushNavHistory);
     const currentSection = useUIStore(s => s.currentSection);
+    const setCurrentSection = useUIStore(s => s.setCurrentSection);
     const openCommandPalette = useUIStore(s => s.openCommandPalette);
 
     const selectedObjectId = useObjectStore(s => s.selectedObjectId);
@@ -125,6 +126,7 @@ export const NavBar = () => {
     const handleCreateObject = async (typeId: string) => {
         const type = objectTypes.find(t => t.id === typeId);
         await createObject(typeId, `Nuevo ${type?.name || 'Objeto'}`);
+        setCurrentSection('objects');
         setCreateDropdownOpen(false);
     };
 

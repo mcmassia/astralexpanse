@@ -16,7 +16,8 @@ import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
-import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension } from './extensions';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension } from './extensions';
+import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
@@ -281,6 +282,27 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 },
             }),
             MermaidBlock,
+            // Image extension with Drive upload
+            ImageExtension.configure({
+                inline: false,
+                allowBase64: false,
+                onUpload: async (file: File) => {
+                    if (!isDriveConnected()) {
+                        showNotification('Conecta con Drive para subir imágenes');
+                        throw new Error('Drive not connected');
+                    }
+                    try {
+                        showNotification('Subiendo imagen...');
+                        const { url } = await uploadImageToDrive(file);
+                        showNotification('Imagen subida correctamente');
+                        return url;
+                    } catch (error) {
+                        console.error('Error uploading image:', error);
+                        showNotification('Error al subir imagen');
+                        throw error;
+                    }
+                },
+            }),
             // Hashtag extensions (#tag)
             HashtagNode,
             HashtagExtension.configure({
