@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
-import { useAuthStore } from '../../stores/authStore';
 import { TypeEditorModal } from '../TypeEditor';
 import { useToast, LucideIcon } from '../common';
 import type { ObjectType } from '../../types/object';
@@ -16,7 +15,6 @@ export const Sidebar = () => {
     const createObject = useObjectStore(s => s.createObject);
 
     const { sidebarOpen, sidebarWidth, currentSection, setCurrentSection, setCalendarView, goToToday, toggleSidebar } = useUIStore();
-    const { user } = useAuthStore();
     const toast = useToast();
 
     const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
@@ -88,21 +86,21 @@ export const Sidebar = () => {
                             onClick={() => setCurrentSection('dashboard')}
                             title="Inicio"
                         >
-                            🏠
+                            <LucideIcon name="Home" size={20} />
                         </button>
                         <button
                             className={`sidebar-collapsed-item ${currentSection === 'calendar' ? 'active' : ''}`}
                             onClick={handleCalendarClick}
                             title="Calendario"
                         >
-                            📅
+                            <LucideIcon name="Calendar" size={20} />
                         </button>
                         <button
                             className={`sidebar-collapsed-item ${currentSection === 'objects' ? 'active' : ''}`}
                             onClick={handleObjectsClick}
                             title="Objetos"
                         >
-                            📚
+                            <LucideIcon name="Library" size={20} />
                         </button>
                     </div>
                     <div className="sidebar-collapsed-types">
@@ -116,15 +114,10 @@ export const Sidebar = () => {
                                 }}
                                 title={type.namePlural}
                             >
-                                {type.icon}
+                                <LucideIcon name={type.icon} size={18} color={type.color} />
                             </button>
                         ))}
                     </div>
-                </div>
-                <div className="sidebar-footer collapsed">
-                    {user?.photoURL && (
-                        <img src={user.photoURL} alt="" className="user-avatar" />
-                    )}
                 </div>
             </aside>
         );
@@ -146,21 +139,21 @@ export const Sidebar = () => {
                     className={`sidebar-menu-item ${currentSection === 'dashboard' ? 'active' : ''}`}
                     onClick={() => setCurrentSection('dashboard')}
                 >
-                    <span className="menu-icon">🏠</span>
+                    <span className="menu-icon"><LucideIcon name="Home" size={18} /></span>
                     <span className="menu-label">Inicio</span>
                 </button>
                 <button
                     className={`sidebar-menu-item ${currentSection === 'calendar' ? 'active' : ''}`}
                     onClick={handleCalendarClick}
                 >
-                    <span className="menu-icon">📅</span>
+                    <span className="menu-icon"><LucideIcon name="Calendar" size={18} /></span>
                     <span className="menu-label">Calendario</span>
                 </button>
                 <button
                     className={`sidebar-menu-item ${currentSection === 'objects' && !selectedObjectId ? 'active' : ''}`}
                     onClick={handleObjectsClick}
                 >
-                    <span className="menu-icon">📚</span>
+                    <span className="menu-icon"><LucideIcon name="Library" size={18} /></span>
                     <span className="menu-label">Objetos</span>
                     <span className="menu-count">{objects.length}</span>
                 </button>

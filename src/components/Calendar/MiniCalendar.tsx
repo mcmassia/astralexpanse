@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { LucideIcon } from '../common';
 import type { CalendarEvent } from '../../types/calendar';
 import { EventModal } from './EventModal';
 import { getMonthGrid, isSameDay, isToday, formatDateISO, DAY_NAMES, MONTH_NAMES } from './utils';
@@ -139,7 +140,9 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
     if (collapsed) {
         return (
             <div className="mini-calendar collapsed" onClick={onToggle}>
-                <div className="mini-calendar-collapsed-icon">📅</div>
+                <div className="mini-calendar-collapsed-icon">
+                    <LucideIcon name="Calendar" size={20} />
+                </div>
                 <div className="mini-calendar-collapsed-text">Calendario</div>
             </div>
         );
