@@ -4,6 +4,7 @@ import type { AstralObject, ObjectType, PropertyDefinition, PropertyValue } from
 import { useObjectStore } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useToast } from '../common';
+import { RelationAutocomplete } from './RelationAutocomplete';
 import './PropertiesPanel.css';
 
 interface PropertiesPanelProps {
@@ -293,91 +294,16 @@ const PropertyInput = ({ definition, value, currentObject, currentObjectType, on
                 );
 
             case 'relation':
-                // Support multiple relation types or any type if not specified
-                const relationTypeIds = definition.relationTypeId
-                    ? definition.relationTypeId.split(',').map(s => s.trim())
-                    : [];
-                const allowAnyType = relationTypeIds.length === 0 || relationTypeIds.includes('any');
-
-                const relatedObjects = allowAnyType
-                    ? objects
-                    : objects.filter(o => relationTypeIds.includes(o.type));
-
                 const currentRelations = Array.isArray(value) ? (value as { id: string; title: string }[]) : [];
-                const selectedIds = currentRelations.map(r => r.id);
-
-                // Group objects by type for better UX
-                const groupedByType: Record<string, AstralObject[]> = {};
-                for (const obj of relatedObjects.filter(o => !selectedIds.includes(o.id))) {
-                    if (!groupedByType[obj.type]) groupedByType[obj.type] = [];
-                    groupedByType[obj.type].push(obj);
-                }
-
                 return (
-                    <div className="prop-relation">
-                        <select
-                            value=""
-                            onChange={e => {
-                                if (e.target.value) {
-                                    const obj = objects.find(o => o.id === e.target.value);
-                                    if (obj && !selectedIds.includes(obj.id)) {
-                                        onChange([...currentRelations, { id: obj.id, title: obj.title }]);
-                                    }
-                                    e.target.value = '';
-                                }
-                            }}
-                            className="prop-select"
-                        >
-                            <option value="">Añadir relación...</option>
-                            {Object.entries(groupedByType).map(([typeId, objs]) => {
-                                const type = objectTypes.find(t => t.id === typeId);
-                                return (
-                                    <optgroup key={typeId} label={`${type?.icon || '📄'} ${type?.namePlural || typeId}`}>
-                                        {objs.map(obj => (
-                                            <option key={obj.id} value={obj.id}>
-                                                {obj.title}
-                                            </option>
-                                        ))}
-                                    </optgroup>
-                                );
-                            })}
-                        </select>
-                        {currentRelations.length > 0 && (
-                            <div className="relation-tags">
-                                {currentRelations.map(rel => {
-                                    const relObj = objects.find(o => o.id === rel.id);
-                                    const relType = relObj ? objectTypes.find(t => t.id === relObj.type) : null;
-                                    return (
-                                        <span
-                                            key={rel.id}
-                                            className={`relation-tag ${onRelationClick ? 'clickable' : ''}`}
-                                            style={{ '--type-color': relType?.color || '#6366f1' } as React.CSSProperties}
-                                            onClick={() => onRelationClick?.(rel.id)}
-                                            role={onRelationClick ? 'button' : undefined}
-                                            tabIndex={onRelationClick ? 0 : undefined}
-                                            onKeyDown={(e) => {
-                                                if (onRelationClick && (e.key === 'Enter' || e.key === ' ')) {
-                                                    e.preventDefault();
-                                                    onRelationClick(rel.id);
-                                                }
-                                            }}
-                                        >
-                                            {rel.title}
-                                            <button
-                                                className="relation-remove"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onChange(currentRelations.filter(r => r.id !== rel.id));
-                                                }}
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                    <RelationAutocomplete
+                        definition={definition}
+                        currentRelations={currentRelations}
+                        objects={objects}
+                        objectTypes={objectTypes}
+                        onChange={onChange}
+                        onRelationClick={onRelationClick}
+                    />
                 );
 
             case 'tags':

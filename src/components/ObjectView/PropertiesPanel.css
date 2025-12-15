@@ -346,3 +346,185 @@
     color: var(--text-tertiary);
     font-style: italic;
 }
+
+/* Relation Autocomplete */
+.relation-autocomplete {
+    position: relative;
+    width: 100%;
+}
+
+.relation-autocomplete-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.relation-autocomplete-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+.relation-autocomplete-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.relation-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    max-height: 320px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.relation-suggestion-group {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.relation-suggestion-group:last-child {
+    border-bottom: none;
+}
+
+.relation-suggestion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--type-color, var(--text-tertiary));
+    background: var(--bg-tertiary);
+    position: sticky;
+    top: 0;
+}
+
+.suggestion-type-icon {
+    font-size: 0.75rem;
+}
+
+.relation-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.relation-suggestion-item:hover,
+.relation-suggestion-item.selected {
+    background: var(--bg-hover);
+}
+
+.suggestion-type-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.suggestion-title {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Create new option */
+.relation-create-option {
+    border-top: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+.relation-create-option:hover,
+.relation-create-option.selected {
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+}
+
+.create-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.create-text {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.create-text strong {
+    color: var(--accent-primary);
+}
+
+.create-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    background: color-mix(in srgb, var(--type-color, #6366f1) 15%, transparent);
+    color: var(--type-color, #6366f1);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* No results */
+.relation-no-results {
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+}
+
+.relation-no-results code {
+    background: var(--bg-tertiary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-family: monospace;
+    color: var(--accent-primary);
+}
+
+/* Scrollbar for suggestions */
+.relation-suggestions::-webkit-scrollbar {
+    width: 6px;
+}
+
+.relation-suggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.relation-suggestions::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 3px;
+}
+
+.relation-suggestions::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+}
