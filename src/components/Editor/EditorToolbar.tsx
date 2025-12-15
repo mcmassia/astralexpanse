@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import { LinkModal } from './LinkModal';
 import { ImageModal } from './ImageModal';
-import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
+import { uploadImageToDrive, isDriveConnected, uploadFileToDrive, getAttachmentTypeInfo, formatFileSize, getDriveViewUrl } from '../../services/drive';
+import { useObjectStore } from '../../stores/objectStore';
 import './EditorToolbar.css';
 
 interface EditorToolbarProps {
@@ -17,6 +18,10 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
     const [showImageDropdown, setShowImageDropdown] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const attachmentInputRef = useRef<HTMLInputElement>(null);
+
+    // Access object store for creating Adjunto objects
+    const createObject = useObjectStore(s => s.createObject);
 
     // Handle external open request (from Cmd+K)
     useEffect(() => {
@@ -105,6 +110,57 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
         // Reset file input
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
+        }
+    };
+
+    // Attachment insertion handler - creates Adjunto object and inserts block
+    const handleAttachmentFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!isDriveConnected()) {
+            alert('Conecta con Google Drive para subir archivos');
+            return;
+        }
+
+        try {
+            // Upload file to Drive
+            const attachment = await uploadFileToDrive(file);
+            console.log('Attachment uploaded:', attachment);
+
+            // First, insert block in editor immediately while editor has focus
+            if (editor && !editor.isDestroyed) {
+                console.log('Inserting attachment block...');
+                editor.chain().focus().insertContent({
+                    type: 'attachmentBlock',
+                    attrs: {
+                        fileId: attachment.fileId,
+                        fileName: attachment.fileName,
+                        mimeType: attachment.mimeType,
+                        size: attachment.size,
+                    },
+                }).run();
+                console.log('Block inserted successfully');
+            }
+
+            // Then create Adjunto object (non-blocking for editor)
+            const { label: tipoArchivo } = getAttachmentTypeInfo(attachment.mimeType);
+            createObject('adjunto', attachment.fileName, '', false, {
+                tipoArchivo,
+                driveFileId: attachment.fileId,
+                driveUrl: getDriveViewUrl(attachment.fileId),
+                tamaño: formatFileSize(attachment.size),
+                mimeType: attachment.mimeType,
+            }).catch(err => console.error('Error creating Adjunto object:', err));
+
+        } catch (error) {
+            console.error('Error uploading attachment:', error);
+            alert('Error al subir archivo');
+        }
+
+        // Reset file input
+        if (attachmentInputRef.current) {
+            attachmentInputRef.current.value = '';
         }
     };
 
@@ -318,6 +374,19 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                         type="file"
                         accept="image/*"
                         onChange={handleImageFileChange}
+                        style={{ display: 'none' }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => attachmentInputRef.current?.click()}
+                        title="Insertar adjunto"
+                    >
+                        📎
+                    </button>
+                    <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        onChange={handleAttachmentFileChange}
                         style={{ display: 'none' }}
                     />
                 </div>

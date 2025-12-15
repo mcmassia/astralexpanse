@@ -5,6 +5,8 @@ import { useUIStore } from '../../stores/uiStore';
 import { Editor } from '../Editor';
 import type { EditorRef } from '../Editor';
 import { PropertiesPanel } from './PropertiesPanel';
+// AttachmentsPanel hidden for now - attachments are now objects of type "Adjunto"
+// import { AttachmentsPanel } from './AttachmentsPanel';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import './ObjectView.css';
 
@@ -253,6 +255,12 @@ export const ObjectView = () => {
                     onRelationClick={selectObject}
                 />
             )}
+            {/* AttachmentsPanel hidden - attachments are now Adjunto objects
+            <AttachmentsPanel
+                object={selectedObject}
+                onUpdate={(updates) => updateObject(selectedObject.id, updates)}
+            />
+            */}
 
             <Editor
                 key={selectedObject.id}

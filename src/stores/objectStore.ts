@@ -440,7 +440,7 @@ export const useObjectStore = create<ObjectStore>()(
                     }
                     set({ objectTypes: typesWithBaseProps });
                 } else {
-                    // Migration: ensure all types have base properties
+                    // Migration 1: ensure all types have base properties
                     let needsUpdate = false;
                     types = types.map(type => {
                         const existingPropIds = type.properties.map(p => p.id);
@@ -459,6 +459,22 @@ export const useObjectStore = create<ObjectStore>()(
                     if (needsUpdate) {
                         for (const type of types) {
                             await db.saveObjectType(type);
+                        }
+                    }
+
+                    // Migration 2: Add new default types that don't exist in Firestore
+                    const existingTypeIds = types.map(t => t.id);
+                    const newDefaultTypes = DEFAULT_OBJECT_TYPES.filter(dt => !existingTypeIds.includes(dt.id));
+
+                    if (newDefaultTypes.length > 0) {
+                        console.log('[ObjectStore] Adding new default types:', newDefaultTypes.map(t => t.id));
+                        for (const newType of newDefaultTypes) {
+                            const typeWithBaseProps = {
+                                ...newType,
+                                properties: [...newType.properties, ...BASE_PROPERTIES],
+                            };
+                            await db.saveObjectType(typeWithBaseProps);
+                            types.push(typeWithBaseProps);
                         }
                     }
 

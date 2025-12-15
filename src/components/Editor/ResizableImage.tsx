@@ -8,8 +8,42 @@ export const ResizableImage = ({ node, updateAttributes, selected }: NodeViewPro
     const [isResizing, setIsResizing] = useState(false);
     const [showContextMenu, setShowContextMenu] = useState(false);
     const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
-
     const { src, alt, title, width, height } = node.attrs;
+
+    // Initialize with src only if it's a real URL, otherwise wait for loader
+    const [imageUrl, setImageUrl] = useState(() =>
+        src.startsWith('drive://') ? '' : src
+    );
+
+    // Handle drive:// protocol
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadDriveImage = async () => {
+            if (src.startsWith('drive://')) {
+                const fileId = src.replace('drive://', '');
+                try {
+                    const { getDriveFileUrl } = await import('../../services/drive');
+                    const url = await getDriveFileUrl(fileId);
+                    if (isMounted) setImageUrl(url);
+                } catch (error) {
+                    console.error('Error loading Drive image:', error);
+                }
+            } else {
+                setImageUrl(src);
+            }
+        };
+
+        loadDriveImage();
+
+        return () => {
+            isMounted = false;
+            // Cleanup object URL if it was created
+            if (imageUrl && imageUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(imageUrl);
+            }
+        };
+    }, [src]);
 
     // Handle resize start
     const handleResizeStart = useCallback((e: React.MouseEvent, corner: string) => {
@@ -105,7 +139,7 @@ export const ResizableImage = ({ node, updateAttributes, selected }: NodeViewPro
             >
                 <img
                     ref={imageRef}
-                    src={src}
+                    src={imageUrl}
                     alt={alt || ''}
                     title={title || ''}
                     style={{

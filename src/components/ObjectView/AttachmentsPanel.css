@@ -1,0 +1,271 @@
+/* AttachmentsPanel styles */
+.attachments-panel {
+    padding: 1rem 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: padding 0.2s ease;
+}
+
+.attachments-panel.collapsed {
+    padding: 0.75rem 1.5rem;
+}
+
+.attachments-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+.attachments-title:hover {
+    color: var(--text-secondary);
+}
+
+.attachments-panel.collapsed .attachments-title {
+    margin-bottom: 0;
+}
+
+.attachments-chevron {
+    font-size: 0.625rem;
+    transition: transform 0.2s ease;
+}
+
+.attachments-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+.attachments-count {
+    margin-left: auto;
+    padding: 0.125rem 0.375rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    font-size: 0.6875rem;
+}
+
+.attachments-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Attachments list */
+.attachments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.attachment-item:hover {
+    border-color: var(--border-default);
+    background: var(--bg-hover);
+}
+
+.attachment-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.attachment-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-secondary);
+}
+
+.attachment-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.attachment-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachment-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.attachment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.attachment-item:hover .attachment-actions {
+    opacity: 1;
+}
+
+.attachment-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.attachment-action-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.attachment-action-btn.delete:hover {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+}
+
+.attachment-action-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Dropzone */
+.attachment-dropzone {
+    position: relative;
+    border: 2px dashed var(--border-default);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    cursor: pointer;
+}
+
+.attachment-dropzone:hover {
+    border-color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+.attachment-dropzone.dragging {
+    border-color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+}
+
+.attachment-dropzone.uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dropzone-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--text-tertiary);
+}
+
+.dropzone-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.dropzone-hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.dropzone-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Upload progress */
+.upload-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.upload-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-default);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.upload-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Empty state */
+.attachments-empty {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+
+/* Error state */
+.attachment-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: color-mix(in srgb, #ef4444 10%, transparent);
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    color: #ef4444;
+}
+
+.attachment-error svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}

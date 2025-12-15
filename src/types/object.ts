@@ -1,5 +1,16 @@
 // Types for Astral Expanse objects
 
+// Attachment for files stored in Google Drive
+export interface Attachment {
+  id: string;                      // Unique attachment ID
+  fileId: string;                  // Google Drive file ID
+  fileName: string;                // Original file name
+  mimeType: string;                // MIME type
+  size: number;                    // File size in bytes
+  url: string;                     // Public URL for access
+  uploadedAt: Date;                // Upload timestamp
+}
+
 export interface AstralObject {
   id: string;
   type: string;                    // "page", "person", "book", etc.
@@ -13,6 +24,7 @@ export interface AstralObject {
   updatedAt: Date;
   driveFileId?: string;            // Google Drive file ID
   driveRevisionId?: string;        // For change detection
+  attachments?: Attachment[];      // Attached files stored in Drive
 }
 
 export type PropertyValue =
@@ -148,6 +160,21 @@ export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
     color: '#22c55e',
     properties: [
       { id: 'date', name: 'Fecha', type: 'date', required: true }
+    ]
+  },
+  {
+    id: 'adjunto',
+    name: 'Adjunto',
+    namePlural: 'Adjuntos',
+    icon: '📎',
+    color: '#94a3b8',
+    properties: [
+      { id: 'tipoArchivo', name: 'Tipo de Archivo', type: 'select', options: ['PDF', 'Imagen', 'EPUB', 'Documento', 'Video', 'Audio', 'Presentación', 'Hoja de Cálculo', 'Archivo', 'Otro'] },
+      { id: 'driveFileId', name: 'ID de Drive', type: 'text' },
+      { id: 'driveUrl', name: 'URL de Drive', type: 'url' },
+      { id: 'tamaño', name: 'Tamaño', type: 'text' },
+      { id: 'mimeType', name: 'Tipo MIME', type: 'text' },
+      { id: 'relacionado', name: 'Relacionado con', type: 'relation' }
     ]
   }
 ];

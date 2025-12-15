@@ -1,0 +1,100 @@
+/* AttachmentBlockView styles */
+.attachment-block {
+    margin: 0.75rem 0;
+    user-select: none;
+}
+
+.attachment-block.selected .attachment-block-content {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+.attachment-block-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.attachment-block-content:hover {
+    border-color: var(--border-default);
+    background: var(--bg-hover);
+}
+
+.attachment-block-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.attachment-block-icon svg {
+    color: var(--text-secondary);
+}
+
+.attachment-block-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.attachment-block-name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attachment-block-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    margin-top: 0.125rem;
+}
+
+.attachment-block-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.attachment-block-content:hover .attachment-block-actions {
+    opacity: 1;
+}
+
+.attachment-block-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.attachment-block-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.attachment-block-btn.delete:hover {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+}

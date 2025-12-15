@@ -77,12 +77,13 @@ export const ImageExtension = Image.extend<ImageExtensionOptions>({
                                 const file = item.getAsFile();
                                 if (!file) continue;
 
-                                // Upload and insert
+                                // Upload and insert - get fresh view state after upload
                                 onUpload(file).then(url => {
-                                    const { state, dispatch } = view;
+                                    // Get fresh state from the view to avoid stale references
+                                    const { state } = view;
                                     const node = state.schema.nodes.image.create({ src: url });
                                     const tr = state.tr.replaceSelectionWith(node);
-                                    dispatch(tr);
+                                    view.dispatch(tr);
                                 }).catch(err => {
                                     console.error('Image paste upload failed:', err);
                                 });
@@ -109,13 +110,17 @@ export const ImageExtension = Image.extend<ImageExtensionOptions>({
                         const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
                         if (!coordinates) return false;
 
-                        // Upload each image
+                        // Upload each image - insert at end of document if original position is invalid
+                        const insertPos = coordinates.pos;
                         imageFiles.forEach(file => {
                             onUpload(file).then(url => {
-                                const { state, dispatch } = view;
+                                // Get fresh state from view
+                                const { state } = view;
                                 const node = state.schema.nodes.image.create({ src: url });
-                                const tr = state.tr.insert(coordinates.pos, node);
-                                dispatch(tr);
+                                // Use current selection position if original drop position is out of bounds
+                                const pos = Math.min(insertPos, state.doc.content.size);
+                                const tr = state.tr.insert(pos, node);
+                                view.dispatch(tr);
                             }).catch(err => {
                                 console.error('Image drop upload failed:', err);
                             });

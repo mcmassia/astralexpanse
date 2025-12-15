@@ -155,6 +155,16 @@ export const objectToMarkdown = (obj: AstralObject): string => {
         ...obj.properties,
     };
 
+    // Include attachments if present
+    if (obj.attachments && obj.attachments.length > 0) {
+        frontmatter.attachments = obj.attachments.map(a => ({
+            fileName: a.fileName,
+            url: a.url,
+            mimeType: a.mimeType,
+            size: a.size,
+        }));
+    }
+
     // Simple HTML to Markdown conversion (basic)
     const content = obj.content
         .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
@@ -271,7 +281,8 @@ export const getOrCreateImagesFolder = async (): Promise<string> => {
     return imagesFolderId!;
 };
 
-// Upload an image to Drive and return a public URL
+// Upload an image to Drive and return a base64 data URL for embedding
+// Drive URLs don't work for direct embedding due to CORS, so we use base64
 export const uploadImageToDrive = async (file: File): Promise<{ fileId: string; url: string }> => {
     const folderId = await getOrCreateImagesFolder();
 
@@ -286,13 +297,180 @@ export const uploadImageToDrive = async (file: File): Promise<{ fileId: string; 
         parents: [folderId],
     };
 
+    // Upload the file to Drive for backup
+    const formData = new FormData();
+    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    formData.append('file', file);
+
+    const uploadResponse = await driveFetch(
+        `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id`,
+        { method: 'POST', body: formData }
+    );
+    const uploadData = await uploadResponse.json();
+    const fileId = uploadData.id;
+
+    // Set file to be publicly readable (for backup access)
+    await driveFetch(`${DRIVE_API_BASE}/files/${fileId}/permissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            role: 'reader',
+            type: 'anyone',
+        }),
+    });
+
+    // Return a special internal URL that the ResizableImage component will recognize
+    // and use to fetch the image content securely via the API
+    const url = `drive://${fileId}`;
+    return { fileId, url };
+};
+
+// Fetch a Drive file securely and return a Blob URL
+export const getDriveFileUrl = async (fileId: string): Promise<string> => {
+    const response = await driveFetch(`${DRIVE_API_BASE}/files/${fileId}?alt=media`);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+};
+
+// Delete an image from Drive by URL or fileId
+export const deleteImageFromDrive = async (urlOrId: string): Promise<void> => {
+    let fileId = urlOrId;
+
+    // Check for internal drive protocol
+    if (urlOrId.startsWith('drive://')) {
+        fileId = urlOrId.replace('drive://', '');
+    } else {
+        // Extract fileId from Drive URL if needed
+        const match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match) {
+            fileId = match[1];
+        }
+    }
+
+    if (fileId) {
+        await driveFetch(`${DRIVE_API_BASE}/files/${fileId}`, { method: 'DELETE' });
+    }
+};
+
+// ==========================================
+// ATTACHMENTS - Generic file upload support
+// ==========================================
+
+// Attachment interface
+export interface DriveAttachment {
+    id: string;           // Unique attachment ID (generated locally)
+    fileId: string;       // Google Drive file ID
+    fileName: string;     // Original file name
+    mimeType: string;     // MIME type
+    size: number;         // File size in bytes
+    url: string;          // Public URL for access
+    uploadedAt: Date;     // Upload timestamp
+}
+
+// Supported file types with icons and labels
+export const ATTACHMENT_TYPE_INFO: Record<string, { icon: string; label: string }> = {
+    // Documents
+    'application/pdf': { icon: 'FileText', label: 'PDF' },
+    'application/epub+zip': { icon: 'Book', label: 'EPUB' },
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'Presentation', label: 'PPTX' },
+    'application/vnd.ms-powerpoint': { icon: 'Presentation', label: 'PPT' },
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'FileText', label: 'DOCX' },
+    'application/msword': { icon: 'FileText', label: 'DOC' },
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: 'FileSpreadsheet', label: 'XLSX' },
+    'application/vnd.ms-excel': { icon: 'FileSpreadsheet', label: 'XLS' },
+    'text/plain': { icon: 'FileText', label: 'TXT' },
+    'text/markdown': { icon: 'FileText', label: 'MD' },
+    // Video
+    'video/mp4': { icon: 'Video', label: 'Video' },
+    'video/webm': { icon: 'Video', label: 'Video' },
+    'video/quicktime': { icon: 'Video', label: 'Video' },
+    'video/x-msvideo': { icon: 'Video', label: 'Video' },
+    // Audio
+    'audio/mpeg': { icon: 'Music', label: 'Audio' },
+    'audio/wav': { icon: 'Music', label: 'Audio' },
+    'audio/ogg': { icon: 'Music', label: 'Audio' },
+    'audio/mp4': { icon: 'Music', label: 'Audio' },
+    // Images (already handled by uploadImageToDrive but included for reference)
+    'image/jpeg': { icon: 'Image', label: 'Imagen' },
+    'image/png': { icon: 'Image', label: 'Imagen' },
+    'image/gif': { icon: 'Image', label: 'Imagen' },
+    'image/webp': { icon: 'Image', label: 'Imagen' },
+    'image/svg+xml': { icon: 'Image', label: 'SVG' },
+    // Archives
+    'application/zip': { icon: 'FileArchive', label: 'ZIP' },
+    'application/x-rar-compressed': { icon: 'FileArchive', label: 'RAR' },
+    'application/x-7z-compressed': { icon: 'FileArchive', label: '7Z' },
+    // Default
+    'default': { icon: 'File', label: 'Archivo' },
+};
+
+// Get attachment type info (icon and label) for a MIME type
+export const getAttachmentTypeInfo = (mimeType: string): { icon: string; label: string } => {
+    return ATTACHMENT_TYPE_INFO[mimeType] || ATTACHMENT_TYPE_INFO['default'];
+};
+
+// Attachments folder cache
+let attachmentsFolderId: string | null = null;
+
+// Get or create the Attachments folder inside Astral Expanse
+export const getOrCreateAttachmentsFolder = async (): Promise<string> => {
+    if (attachmentsFolderId) return attachmentsFolderId;
+
+    const parentId = await getOrCreateRootFolder();
+
+    // Search for existing Attachments folder
+    const searchUrl = `${DRIVE_API_BASE}/files?q=name='Adjuntos' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`;
+    const searchResponse = await driveFetch(searchUrl);
+    const searchData = await searchResponse.json();
+
+    if (searchData.files?.length > 0) {
+        attachmentsFolderId = searchData.files[0].id;
+        return attachmentsFolderId!;
+    }
+
+    // Create new Attachments folder
+    const createResponse = await driveFetch(`${DRIVE_API_BASE}/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: 'Adjuntos',
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentId],
+        }),
+    });
+
+    const createData = await createResponse.json();
+    attachmentsFolderId = createData.id;
+    return attachmentsFolderId!;
+};
+
+// Generate unique ID for attachments
+const generateAttachmentId = (): string => {
+    return `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+};
+
+// Upload a file to Drive as an attachment
+export const uploadFileToDrive = async (file: File): Promise<DriveAttachment> => {
+    const folderId = await getOrCreateAttachmentsFolder();
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[/\\?%*:|"<>]/g, '-');
+    const fileName = `${timestamp}-${safeName}`;
+
+    const metadata = {
+        name: fileName,
+        mimeType: file.type || 'application/octet-stream',
+        parents: [folderId],
+    };
+
     // Upload the file
     const formData = new FormData();
     formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     formData.append('file', file);
 
     const uploadResponse = await driveFetch(
-        `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,webContentLink`,
+        `${DRIVE_UPLOAD_BASE}/files?uploadType=multipart&fields=id,name,mimeType,size`,
         { method: 'POST', body: formData }
     );
     const uploadData = await uploadResponse.json();
@@ -308,20 +486,41 @@ export const uploadImageToDrive = async (file: File): Promise<{ fileId: string; 
         }),
     });
 
-    // Return the direct access URL
+    // Build the public URL
     const url = `https://drive.google.com/uc?id=${fileId}`;
-    return { fileId, url };
+
+    return {
+        id: generateAttachmentId(),
+        fileId,
+        fileName: file.name, // Keep original name for display
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        url,
+        uploadedAt: new Date(),
+    };
 };
 
-// Delete an image from Drive by URL or fileId
-export const deleteImageFromDrive = async (urlOrId: string): Promise<void> => {
-    let fileId = urlOrId;
-
-    // Extract fileId from Drive URL if needed
-    const match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (match) {
-        fileId = match[1];
-    }
-
+// Delete an attachment from Drive
+export const deleteAttachmentFromDrive = async (fileId: string): Promise<void> => {
     await driveFetch(`${DRIVE_API_BASE}/files/${fileId}`, { method: 'DELETE' });
 };
+
+// Get URL for viewing a file in Google Drive
+export const getDriveViewUrl = (fileId: string): string => {
+    return `https://drive.google.com/file/d/${fileId}/view`;
+};
+
+// Get URL for downloading a file from Google Drive
+export const getDriveDownloadUrl = (fileId: string): string => {
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+};
+
+// Format file size for display
+export const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+};
+
