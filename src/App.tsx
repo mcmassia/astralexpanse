@@ -149,8 +149,10 @@ function App() {
       }
 
       // Cmd+. or Ctrl+.: Toggle focus mode
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+      // Check both e.key and e.code for better cross-browser/keyboard layout compatibility
+      if ((e.metaKey || e.ctrlKey) && (e.key === '.' || e.code === 'Period')) {
         e.preventDefault();
+        e.stopPropagation();
         toggleFocusMode();
         return;
       }
