@@ -10,24 +10,43 @@ export const ResizableImage = ({ node, updateAttributes, selected }: NodeViewPro
     const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
     const { src, alt, title, width, height } = node.attrs;
 
-    // Initialize with src only if it's a real URL, otherwise wait for loader
-    const [imageUrl, setImageUrl] = useState(() =>
-        src.startsWith('drive://') ? '' : src
-    );
+    // Initialize with src only if it's a real URL (not drive://, drive.google/thumbnail, or lh3), otherwise wait for loader
+    const [imageUrl, setImageUrl] = useState(() => {
+        if (src.startsWith('drive://')) return '';
+        if (src.includes('drive.google.com/thumbnail')) return '';
+        // Keeping legacy checks just in case
+        if (src.includes('drive.google.com') && src.includes('id=') && !src.includes('thumbnail')) return '';
+        if (src.includes('lh3.googleusercontent.com/d/')) return '';
+        return src;
+    });
 
-    // Handle drive:// protocol
+    // Handle drive:// protocol and standard Drive URLs
     useEffect(() => {
         let isMounted = true;
 
         const loadDriveImage = async () => {
+            let fileId = null;
+
             if (src.startsWith('drive://')) {
-                const fileId = src.replace('drive://', '');
+                fileId = src.replace('drive://', '');
+            } else if (src.includes('drive.google.com')) {
+                const match = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (match) fileId = match[1];
+            } else if (src.includes('lh3.googleusercontent.com/d/')) {
+                // Extract ID from https://lh3.googleusercontent.com/d/FILE_ID
+                const parts = src.split('/d/');
+                if (parts.length > 1) fileId = parts[1].split('/')[0];
+            }
+
+            if (fileId) {
                 try {
                     const { getDriveFileUrl } = await import('../../services/drive');
                     const url = await getDriveFileUrl(fileId);
                     if (isMounted) setImageUrl(url);
                 } catch (error) {
                     console.error('Error loading Drive image:', error);
+                    // Fallback to original SRC if secure load fails (might work if public)
+                    if (isMounted && src.startsWith('http')) setImageUrl(src);
                 }
             } else {
                 setImageUrl(src);

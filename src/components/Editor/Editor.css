@@ -775,3 +775,95 @@
 .image-dropdown-menu button:not(:last-child) {
   border-bottom: 1px solid var(--border-subtle);
 }
+
+/* Collapsible Headings */
+.collapsible-heading {
+  position: relative;
+}
+
+.heading-row {
+  display: flex;
+  align-items: flex-start;
+  /* Align icon with first line of text */
+  margin-left: -1.5rem;
+  /* Pull icon into margin */
+}
+
+.heading-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.25rem;
+  margin-top: 0;
+  /* Reset margin, alignment handled by flex */
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  /* Always visible but subtle */
+  transition: opacity 0.2s, transform 0.2s, color 0.2s;
+  border-radius: 4px;
+}
+
+.collapsible-heading:hover .heading-toggle,
+.heading-toggle.is-collapsed {
+  opacity: 1;
+  /* Fully visible on hover or collapsed */
+}
+
+.heading-toggle:hover {
+  background-color: var(--bg-secondary-hover);
+  color: var(--text-primary);
+  opacity: 1;
+}
+
+.heading-toggle.is-collapsed {
+  /* transform: rotate(-90deg); - We use different icons instead */
+}
+
+.heading-content {
+  flex: 1;
+  min-width: 0;
+  /* Flexbox trick for text overflow */
+  display: block;
+  /* Ensure content behaves as block inside flex */
+}
+
+/* Specific alignments for heading levels */
+.heading-level-1 .heading-toggle {
+  margin-top: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+}
+
+.heading-level-2 .heading-toggle {
+  margin-top: 0.35rem;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.heading-level-3 .heading-toggle {
+  margin-top: 0.25rem;
+}
+
+/* Fix vertical alignment for different heading sizes */
+/* Using flex-start generally works if line-height is consistent */
+.heading-level-1 .heading-row {
+  align-items: center;
+}
+
+.heading-level-2 .heading-row {
+  align-items: center;
+}
+
+.heading-level-3 .heading-row {
+  align-items: center;
+}
+
+/* The generic class applied by ProseMirror decoration/node view to hidden nodes */
+.is-hidden-content {
+  display: none !important;
+}

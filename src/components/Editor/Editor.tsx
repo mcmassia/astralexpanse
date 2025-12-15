@@ -16,7 +16,7 @@ import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
-import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock } from './extensions';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading } from './extensions';
 import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
@@ -242,11 +242,22 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
-                heading: { levels: [1, 2, 3] },
+                heading: false, // Using custom CollapsibleHeading
+                bulletList: {
+                    keepMarks: true,
+                    keepAttributes: false,
+                },
+                orderedList: {
+                    keepMarks: true,
+                    keepAttributes: false,
+                },
                 codeBlock: false, // Using CodeBlockLowlight instead
                 horizontalRule: false, // Using custom HorizontalRule
                 link: false, // Using custom Link configuration
                 underline: false, // Using custom Underline configuration
+            }),
+            CollapsibleHeading.configure({
+                levels: [1, 2, 3],
             }),
             Placeholder.configure({
                 placeholder,

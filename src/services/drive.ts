@@ -319,9 +319,9 @@ export const uploadImageToDrive = async (file: File): Promise<{ fileId: string; 
         }),
     });
 
-    // Return a special internal URL that the ResizableImage component will recognize
-    // and use to fetch the image content securely via the API
-    const url = `drive://${fileId}`;
+    // Return thumbnail URL which is most compatible for embedding
+    // The ResizableImage component will intercept this and use secure fetching within the app
+    const url = `https://drive.google.com/thumbnail?id=${fileId}&sz=w2560`;
     return { fileId, url };
 };
 
@@ -336,15 +336,17 @@ export const getDriveFileUrl = async (fileId: string): Promise<string> => {
 export const deleteImageFromDrive = async (urlOrId: string): Promise<void> => {
     let fileId = urlOrId;
 
-    // Check for internal drive protocol
-    if (urlOrId.startsWith('drive://')) {
+    // Check for standard Drive URL (including thumbnail and export=view)
+    const match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) {
+        fileId = match[1];
+    } else if (urlOrId.startsWith('drive://')) {
+        // Legacy support for drive:// protocol
         fileId = urlOrId.replace('drive://', '');
-    } else {
-        // Extract fileId from Drive URL if needed
-        const match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        if (match) {
-            fileId = match[1];
-        }
+    } else if (urlOrId.includes('lh3.googleusercontent.com/d/')) {
+        // Support for Google CDN format
+        const parts = urlOrId.split('/d/');
+        if (parts.length > 1) fileId = parts[1].split('/')[0];
     }
 
     if (fileId) {
