@@ -235,7 +235,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                         {/* Type Selector Trigger */}
                         <button
                             className={`relation-popover-trigger ${activePopover === `rel-${prop.id}` ? 'active' : ''}`}
-                            onClick={(e) => {
+                            onClick={() => {
                                 // Close others, toggle this one
                                 setActivePopover(prev => prev === `rel-${prop.id}` ? null : `rel-${prop.id}`);
                             }}
