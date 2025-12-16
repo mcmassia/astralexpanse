@@ -35,14 +35,19 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
     const objectTypes = useObjectStore(s => s.objectTypes);
     const toast = useToast();
 
+    // Form State
     const [name, setName] = useState('');
     const [namePlural, setNamePlural] = useState('');
-    const [icon, setIcon] = useState('📄');
+    const [icon, setIcon] = useState('FileText');
     const [color, setColor] = useState('#6366f1');
     const [properties, setProperties] = useState<PropertyDefinition[]>([]);
     const [template, setTemplate] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // UI State
+    const [activeTab, setActiveTab] = useState<'properties' | 'template'>('properties');
+    const [activePopover, setActivePopover] = useState<string | null>(null);
 
     // Initialize form when editing
     useEffect(() => {
@@ -62,7 +67,15 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
             setTemplate('');
         }
         setError(null);
+        setActiveTab('properties');
     }, [editingType, isOpen]);
+
+    // Close popovers on click outside
+    useEffect(() => {
+        const handleClickOutside = () => setActivePopover(null);
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
 
     const handleAddProperty = () => {
         const newProp: PropertyDefinition = {
@@ -79,6 +92,17 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
         setProperties(newProperties);
     };
 
+    const handleMoveProperty = (index: number, direction: 'up' | 'down') => {
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === properties.length - 1) return;
+
+        const newProperties = [...properties];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        [newProperties[index], newProperties[targetIndex]] = [newProperties[targetIndex], newProperties[index]];
+        setProperties(newProperties);
+    };
+
     const handleDeleteProperty = (index: number) => {
         setProperties(properties.filter((_, i) => i !== index));
     };
@@ -86,6 +110,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
     const handleSave = async () => {
         if (!name.trim()) {
             setError('El nombre es obligatorio');
+            setActiveTab('properties');
             return;
         }
 
@@ -143,373 +168,370 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
 
     if (!isOpen) return null;
 
+    // --- Render Helpers ---
+
+    const renderConfigurationCell = (prop: PropertyDefinition, index: number) => {
+        switch (prop.type) {
+            case 'select':
+            case 'multiselect':
+                return (
+                    <div className="config-chips">
+                        {prop.options?.map((opt, optIndex) => (
+                            <span key={optIndex} className="config-chip">
+                                {opt}
+                                <span
+                                    className="chip-remove"
+                                    onClick={() => {
+                                        const newOptions = prop.options?.filter((_, i) => i !== optIndex);
+                                        handleUpdateProperty(index, { options: newOptions });
+                                    }}
+                                >×</span>
+                            </span>
+                        ))}
+                        <input
+                            type="text"
+                            placeholder={prop.options?.length ? "+ Opción" : "Añadir opciones..."}
+                            className="config-input-ghost"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = (e.target as HTMLInputElement).value.trim();
+                                    if (val) {
+                                        handleUpdateProperty(index, {
+                                            options: [...(prop.options || []), val]
+                                        });
+                                        (e.target as HTMLInputElement).value = '';
+                                    }
+                                }
+                            }}
+                        />
+                    </div>
+                );
+
+            case 'relation':
+                return (
+                    <div className="relation-config" onClick={e => e.stopPropagation()}>
+                        <div className="relation-badges">
+                            {(!prop.relationTypeId || prop.relationTypeId === 'any') ? (
+                                <span className="relation-badge" style={{ '--badge-color': '#64748b' } as React.CSSProperties}>
+                                    Cualquier tipo
+                                </span>
+                            ) : (
+                                prop.relationTypeId.split(',').map(typeId => {
+                                    const type = objectTypes.find(t => t.id === typeId);
+                                    return (
+                                        <span
+                                            key={typeId}
+                                            className="relation-badge"
+                                            style={{ '--badge-color': type?.color || '#64748b' } as React.CSSProperties}
+                                        >
+                                            {type?.name || typeId}
+                                        </span>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Type Selector Trigger */}
+                        <button
+                            className={`relation-popover-trigger ${activePopover === `rel-${prop.id}` ? 'active' : ''}`}
+                            onClick={(e) => {
+                                // Close others, toggle this one
+                                setActivePopover(prev => prev === `rel-${prop.id}` ? null : `rel-${prop.id}`);
+                            }}
+                            title="Configurar tipos permitidos"
+                        >
+                            ⚙️
+                        </button>
+
+                        {/* Popover */}
+                        {activePopover === `rel-${prop.id}` && (
+                            <div className="relation-popover" onClick={e => e.stopPropagation()}>
+                                <div className="popover-section">
+                                    <div className="popover-header">Tipos permitidos</div>
+                                    <div className="relation-list">
+                                        <label className="relation-option">
+                                            <input
+                                                type="checkbox"
+                                                checked={!prop.relationTypeId || prop.relationTypeId === 'any'}
+                                                onChange={e => {
+                                                    handleUpdateProperty(index, {
+                                                        relationTypeId: e.target.checked ? 'any' : objectTypes[0]?.id
+                                                    });
+                                                }}
+                                            />
+                                            <span>Cualquier tipo</span>
+                                        </label>
+
+                                        {prop.relationTypeId !== 'any' && objectTypes.map(t => (
+                                            <label key={t.id} className="relation-option">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={prop.relationTypeId?.split(',').includes(t.id)}
+                                                    onChange={e => {
+                                                        const current = prop.relationTypeId?.split(',').filter(x => x && x !== 'any') || [];
+                                                        let next;
+                                                        if (e.target.checked) {
+                                                            next = [...current, t.id];
+                                                        } else {
+                                                            next = current.filter(id => id !== t.id);
+                                                        }
+                                                        handleUpdateProperty(index, {
+                                                            relationTypeId: next.length ? next.join(',') : ''
+                                                        });
+                                                    }}
+                                                />
+                                                <LucideIcon name={t.icon} size={14} color={t.color} />
+                                                <span>{t.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="popover-section">
+                                    <div className="popover-header">Avanzado</div>
+                                    <label className="relation-option">
+                                        <input
+                                            type="checkbox"
+                                            checked={prop.computed || false}
+                                            onChange={e => {
+                                                handleUpdateProperty(index, {
+                                                    computed: e.target.checked,
+                                                    computedFrom: e.target.checked ? { throughProperty: '', collectProperty: '' } : undefined
+                                                });
+                                            }}
+                                        />
+                                        <span>Propiedad calculada</span>
+                                    </label>
+                                    <label className="relation-option">
+                                        <input
+                                            type="checkbox"
+                                            checked={prop.twoWayLinked || false}
+                                            onChange={e => {
+                                                handleUpdateProperty(index, {
+                                                    twoWayLinked: e.target.checked,
+                                                    linkedTypeId: e.target.checked ? (prop.relationTypeId?.split(',')[0] || '') : undefined
+                                                });
+                                            }}
+                                        />
+                                        <span>Enlace bidireccional</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'text':
+            case 'number':
+            case 'url':
+            case 'email':
+                return (
+                    <input
+                        type="text"
+                        className="config-placeholder"
+                        placeholder="Valor por defecto (opcional)"
+                        value={prop.defaultValue as string || ''}
+                        onChange={e => handleUpdateProperty(index, { defaultValue: e.target.value })}
+                    />
+                );
+
+            default:
+                return <span className="config-placeholder">Sin configuración</span>;
+        }
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="type-editor-modal" onClick={e => e.stopPropagation()}>
+                {/* Header */}
                 <header className="modal-header">
-                    <h2>{editingType ? 'Editar tipo' : 'Nuevo tipo de objeto'}</h2>
+                    <div className="header-title-row">
+                        <h2>{editingType ? 'Editar tipo' : 'Nuevo tipo'}</h2>
+                        {(name || icon) && (
+                            <div className="type-preview-badge">
+                                <LucideIcon name={icon} size={16} color={color} />
+                                <span>{name || 'Sin nombre'}</span>
+                            </div>
+                        )}
+                    </div>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </header>
 
-                <div className="modal-body">
-                    {/* Basic Info */}
-                    <section className="modal-section">
-                        <div className="type-basic-info">
-                            <div className="icon-color-row">
-                                <div className="field-group">
-                                    <label>Icono</label>
-                                    <IconPicker
-                                        selectedIcon={icon}
-                                        color={color}
-                                        onSelect={setIcon}
-                                    />
-                                </div>
+                {/* Tabs */}
+                <div className="type-editor-tabs">
+                    <button
+                        className={`tab-button ${activeTab === 'properties' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('properties')}
+                    >
+                        Propiedades
+                    </button>
+                    <button
+                        className={`tab-button ${activeTab === 'template' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('template')}
+                    >
+                        Plantilla
+                    </button>
+                </div>
 
-                                <div className="field-group">
-                                    <label>Color</label>
-                                    <div className="color-selector">
-                                        <input
-                                            type="color"
-                                            value={color}
-                                            onChange={e => setColor(e.target.value)}
-                                            className="color-input"
+                {/* Body Content */}
+                <div className="modal-body">
+                    {activeTab === 'properties' && (
+                        <>
+                            {/* Basic Info Section - Moved here */}
+                            <div className="type-basic-info-layout">
+                                <div className="info-row">
+                                    <div className="field-group">
+                                        <label>Icono</label>
+                                        <IconPicker
+                                            selectedIcon={icon}
+                                            color={color}
+                                            onSelect={setIcon}
                                         />
-                                        <div className="color-presets">
-                                            {COLOR_SUGGESTIONS.map(c => (
-                                                <button
-                                                    key={c}
-                                                    className={`color-preset ${color === c ? 'selected' : ''}`}
-                                                    style={{ background: c }}
-                                                    onClick={() => setColor(c)}
-                                                />
-                                            ))}
+                                    </div>
+                                    <div className="field-group">
+                                        <label>Color</label>
+                                        <div className="color-field-row">
+                                            <input
+                                                type="color"
+                                                value={color}
+                                                onChange={e => setColor(e.target.value)}
+                                                className="color-input-small"
+                                            />
+                                            <div className="color-presets">
+                                                {COLOR_SUGGESTIONS.map(c => (
+                                                    <button
+                                                        key={c}
+                                                        className={`color-preset ${color === c ? 'selected' : ''}`}
+                                                        style={{ background: c }}
+                                                        onClick={() => setColor(c)}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
+                                    </div>
+                                </div>
+                                <div className="info-row name-row">
+                                    <div className="field-group flex-1">
+                                        <label>Nombre (singular)</label>
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            placeholder="Ej: Idea"
+                                            className="name-input"
+                                        />
+                                    </div>
+                                    <div className="field-group flex-1">
+                                        <label>Nombre (plural)</label>
+                                        <input
+                                            type="text"
+                                            value={namePlural}
+                                            onChange={e => setNamePlural(e.target.value)}
+                                            placeholder="Ej: Ideas"
+                                            className="name-input"
+                                        />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="name-fields">
-                                <div className="field-group">
-                                    <label>Nombre (singular)</label>
-                                    <input
-                                        type="text"
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        placeholder="Ej: Libro"
-                                    />
+                            <div className="properties-section-title">PROPIEDADES</div>
+
+                            <div className="properties-table">
+                                {/* Header */}
+                                <div className="prop-table-header">
+                                    <div className="prop-header-cell">Etiqueta</div>
+                                    <div className="prop-header-cell">Tipo</div>
+                                    <div className="prop-header-cell">Requerido</div>
+                                    <div className="prop-header-cell">Configuración</div>
+                                    <div className="prop-header-cell"></div>
                                 </div>
 
-                                <div className="field-group">
-                                    <label>Nombre (plural)</label>
-                                    <input
-                                        type="text"
-                                        value={namePlural}
-                                        onChange={e => setNamePlural(e.target.value)}
-                                        placeholder="Ej: Libros"
-                                    />
-                                </div>
+                                {/* Rows */}
+                                {properties.map((prop, index) => (
+                                    <div key={prop.id} className="prop-table-row">
+                                        <div className="prop-cell">
+                                            <input
+                                                type="text"
+                                                value={prop.name}
+                                                onChange={e => handleUpdateProperty(index, { name: e.target.value })}
+                                                placeholder="Nombre de la propiedad"
+                                            />
+                                        </div>
+                                        <div className="prop-cell">
+                                            <select
+                                                value={prop.type}
+                                                onChange={e => handleUpdateProperty(index, { type: e.target.value as PropertyType })}
+                                            >
+                                                {PROPERTY_TYPES.map(pt => (
+                                                    <option key={pt.value} value={pt.value}>{pt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="prop-cell prop-cell-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={prop.required || false}
+                                                onChange={e => handleUpdateProperty(index, { required: e.target.checked })}
+                                            />
+                                        </div>
+                                        <div className="prop-cell">
+                                            {renderConfigurationCell(prop, index)}
+                                        </div>
+                                        <div className="prop-cell prop-cell-center" style={{ gap: '0.25rem' }}>
+                                            <button
+                                                className="property-delete"
+                                                onClick={() => handleMoveProperty(index, 'up')}
+                                                disabled={index === 0}
+                                                title="Mover arriba"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                className="property-delete"
+                                                onClick={() => handleMoveProperty(index, 'down')}
+                                                disabled={index === properties.length - 1}
+                                                title="Mover abajo"
+                                            >
+                                                ↓
+                                            </button>
+                                            <button
+                                                className="property-delete"
+                                                onClick={() => handleDeleteProperty(index)}
+                                                title="Eliminar propiedad"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
+
+                            <div className="add-property-row">
+                                <button className="add-prop-ghost" onClick={handleAddProperty}>
+                                    + Añadir nueva propiedad
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    {activeTab === 'template' && (
+                        <div className="template-editor">
+                            <div className="template-hint">
+                                Esta plantilla se aplicará automáticamente al cuerpo de los nuevos objetos de este tipo.
+                            </div>
+                            <textarea
+                                value={template}
+                                onChange={e => setTemplate(e.target.value)}
+                                placeholder="Escribe el contenido inicial..."
+                                className="template-textarea"
+                            />
                         </div>
-                    </section>
-
-                    {/* Properties */}
-                    <section className="modal-section">
-                        <h3>Propiedades</h3>
-                        <div className="properties-list">
-                            {properties.map((prop, index) => (
-                                <div key={prop.id} className="property-row">
-                                    <input
-                                        type="text"
-                                        value={prop.name}
-                                        onChange={e => handleUpdateProperty(index, { name: e.target.value })}
-                                        placeholder="Nombre de propiedad"
-                                        className="property-name"
-                                    />
-                                    <select
-                                        value={prop.type}
-                                        onChange={e => handleUpdateProperty(index, { type: e.target.value as PropertyType })}
-                                        className="property-type"
-                                    >
-                                        {PROPERTY_TYPES.map(pt => (
-                                            <option key={pt.value} value={pt.value}>{pt.label}</option>
-                                        ))}
-                                    </select>
-
-                                    {/* Type-specific config */}
-                                    {(prop.type === 'select' || prop.type === 'multiselect') && (
-                                        <input
-                                            type="text"
-                                            defaultValue={prop.options?.join(', ') || ''}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    const target = e.target as HTMLInputElement;
-                                                    handleUpdateProperty(index, {
-                                                        options: target.value.split(',').map(s => s.trim()).filter(Boolean)
-                                                    });
-                                                }
-                                            }}
-                                            onBlur={e => {
-                                                handleUpdateProperty(index, {
-                                                    options: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                                                });
-                                            }}
-                                            placeholder="Opciones separadas por coma, pulsa Enter"
-                                            className="property-options"
-                                        />
-                                    )}
-
-                                    {prop.type === 'relation' && (
-                                        <div className="relation-type-selector">
-                                            <label className="relation-type-option">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={prop.relationTypeId === undefined || prop.relationTypeId === 'any'}
-                                                    onChange={e => {
-                                                        if (e.target.checked) {
-                                                            handleUpdateProperty(index, { relationTypeId: 'any' });
-                                                        } else {
-                                                            // Set to empty string to indicate user wants to select specific types
-                                                            // The list below will show when relationTypeId is not 'any' or undefined
-                                                            handleUpdateProperty(index, { relationTypeId: objectTypes[0]?.id || '' });
-                                                        }
-                                                    }}
-                                                />
-                                                <span>Cualquier tipo</span>
-                                            </label>
-                                            {(prop.relationTypeId === undefined || prop.relationTypeId === 'any') ? null : (
-                                                <div className="relation-types-list">
-                                                    {objectTypes.map(t => {
-                                                        const currentTypes = prop.relationTypeId?.split(',').map(s => s.trim()) || [];
-                                                        const isSelected = currentTypes.includes(t.id);
-                                                        return (
-                                                            <label key={t.id} className="relation-type-option">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isSelected}
-                                                                    onChange={e => {
-                                                                        let newTypes: string[];
-                                                                        if (e.target.checked) {
-                                                                            newTypes = [...currentTypes.filter(id => id && id !== 'any'), t.id];
-                                                                        } else {
-                                                                            newTypes = currentTypes.filter(id => id !== t.id);
-                                                                        }
-                                                                        handleUpdateProperty(index, {
-                                                                            relationTypeId: newTypes.length > 0 ? newTypes.join(',') : ''
-                                                                        });
-                                                                    }}
-                                                                />
-                                                                <LucideIcon name={t.icon} size={14} color={t.color} />
-                                                                <span>{t.name}</span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            {/* Two-way linking configuration */}
-                                            <div className="two-way-linking-section">
-                                                <label className="relation-type-option two-way-toggle">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={prop.twoWayLinked || false}
-                                                        onChange={e => {
-                                                            handleUpdateProperty(index, {
-                                                                twoWayLinked: e.target.checked,
-                                                                linkedTypeId: e.target.checked ? (prop.relationTypeId?.split(',')[0] || '') : undefined,
-                                                                linkedPropertyId: undefined
-                                                            });
-                                                        }}
-                                                    />
-                                                    <span>🔗 Enlace bidireccional</span>
-                                                </label>
-
-                                                {prop.twoWayLinked && (
-                                                    <div className="two-way-config">
-                                                        <div className="two-way-field">
-                                                            <label>Tipo destino:</label>
-                                                            <select
-                                                                value={prop.linkedTypeId || ''}
-                                                                onChange={e => {
-                                                                    handleUpdateProperty(index, {
-                                                                        linkedTypeId: e.target.value,
-                                                                        linkedPropertyId: ''
-                                                                    });
-                                                                }}
-                                                                className="two-way-select"
-                                                            >
-                                                                <option value="">Seleccionar tipo...</option>
-                                                                {objectTypes.map(t => (
-                                                                    <option key={t.id} value={t.id}>
-                                                                        {t.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-
-                                                        {prop.linkedTypeId && (
-                                                            <div className="two-way-field">
-                                                                <label>Propiedad de enlace:</label>
-                                                                <select
-                                                                    value={prop.linkedPropertyId || ''}
-                                                                    onChange={e => {
-                                                                        handleUpdateProperty(index, {
-                                                                            linkedPropertyId: e.target.value
-                                                                        });
-                                                                    }}
-                                                                    className="two-way-select"
-                                                                >
-                                                                    <option value="">Seleccionar propiedad...</option>
-                                                                    {(() => {
-                                                                        const targetType = objectTypes.find(t => t.id === prop.linkedTypeId);
-                                                                        const relationProps = targetType?.properties?.filter(p => p.type === 'relation') || [];
-                                                                        return relationProps.map(p => (
-                                                                            <option key={p.id} value={p.id}>
-                                                                                {p.name}
-                                                                            </option>
-                                                                        ));
-                                                                    })()}
-                                                                </select>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Computed property configuration */}
-                                    {prop.type === 'relation' && (
-                                        <div className="computed-property-section">
-                                            <label className="relation-type-option computed-toggle">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={prop.computed || false}
-                                                    onChange={e => {
-                                                        handleUpdateProperty(index, {
-                                                            computed: e.target.checked,
-                                                            computedFrom: e.target.checked ? { throughProperty: '', collectProperty: '' } : undefined
-                                                        });
-                                                    }}
-                                                />
-                                                <span>📊 Propiedad calculada</span>
-                                            </label>
-
-                                            {prop.computed && (
-                                                <div className="computed-config">
-                                                    <div className="computed-field">
-                                                        <label>A través de:</label>
-                                                        <select
-                                                            value={prop.computedFrom?.throughProperty || ''}
-                                                            onChange={e => {
-                                                                handleUpdateProperty(index, {
-                                                                    computedFrom: {
-                                                                        throughProperty: e.target.value,
-                                                                        collectProperty: prop.computedFrom?.collectProperty || ''
-                                                                    }
-                                                                });
-                                                            }}
-                                                            className="computed-select"
-                                                        >
-                                                            <option value="">Seleccionar propiedad...</option>
-                                                            {properties.filter(p => p.type === 'relation' && p.id !== prop.id && !p.computed).map(p => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-
-                                                    {prop.computedFrom?.throughProperty && (
-                                                        <div className="computed-field">
-                                                            <label>Recoger:</label>
-                                                            <select
-                                                                value={prop.computedFrom?.collectProperty || ''}
-                                                                onChange={e => {
-                                                                    handleUpdateProperty(index, {
-                                                                        computedFrom: {
-                                                                            throughProperty: prop.computedFrom?.throughProperty || '',
-                                                                            collectProperty: e.target.value
-                                                                        }
-                                                                    });
-                                                                }}
-                                                                className="computed-select"
-                                                            >
-                                                                <option value="">Seleccionar propiedad...</option>
-                                                                {(() => {
-                                                                    // Find the through property to get its target type
-                                                                    const throughProp = properties.find(p => p.id === prop.computedFrom?.throughProperty);
-                                                                    if (!throughProp) return null;
-
-                                                                    // Get target types - try relationTypeId first, then linkedTypeId for two-way links
-                                                                    let targetTypeIds: string[] = [];
-
-                                                                    if (throughProp.relationTypeId && throughProp.relationTypeId !== 'any') {
-                                                                        targetTypeIds = throughProp.relationTypeId.split(',').map(s => s.trim()).filter(Boolean);
-                                                                    } else if (throughProp.linkedTypeId) {
-                                                                        // Use linkedTypeId if relationTypeId is 'any' but two-way link is configured
-                                                                        targetTypeIds = [throughProp.linkedTypeId];
-                                                                    } else {
-                                                                        // If "Cualquier tipo" and no linkedTypeId, show all types' relation properties
-                                                                        targetTypeIds = objectTypes.map(t => t.id);
-                                                                    }
-
-                                                                    // Collect all relation properties from target types
-                                                                    const targetProps: { typeId: string; typeName: string; prop: typeof throughProp }[] = [];
-                                                                    for (const typeId of targetTypeIds) {
-                                                                        const targetType = objectTypes.find(t => t.id === typeId);
-                                                                        if (targetType) {
-                                                                            for (const tp of targetType.properties || []) {
-                                                                                if (tp.type === 'relation') {
-                                                                                    targetProps.push({ typeId, typeName: targetType.name, prop: tp });
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-
-                                                                    return targetProps.map(({ typeName, prop: tp }) => (
-                                                                        <option key={tp.id} value={tp.id}>
-                                                                            {typeName} → {tp.name}
-                                                                        </option>
-                                                                    ));
-                                                                })()}
-                                                            </select>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <button
-                                        className="property-delete"
-                                        onClick={() => handleDeleteProperty(index)}
-                                        title="Eliminar propiedad"
-                                    >
-                                        🗑️
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        <button className="add-property-btn" onClick={handleAddProperty}>
-                            + Añadir propiedad
-                        </button>
-                    </section>
-
-                    {/* Template */}
-                    <section className="modal-section">
-                        <h3>Plantilla (contenido inicial)</h3>
-                        <textarea
-                            value={template}
-                            onChange={e => setTemplate(e.target.value)}
-                            placeholder="Contenido que aparecerá por defecto al crear un nuevo objeto de este tipo..."
-                            className="template-textarea"
-                        />
-                    </section>
-
-                    {error && (
-                        <div className="modal-error">{error}</div>
                     )}
                 </div>
+
+                {error && (
+                    <div className="modal-error" style={{ margin: '0 1.5rem 1rem' }}>{error}</div>
+                )}
 
                 <footer className="modal-footer">
                     <button className="btn-secondary" onClick={onClose}>

@@ -1,5 +1,5 @@
 // Object view component - main content area for viewing/editing objects
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useObjectStore, useSelectedObject } from '../../stores/objectStore';
 import { useUIStore } from '../../stores/uiStore';
 import { Editor } from '../Editor';
@@ -82,6 +82,25 @@ export const ObjectView = () => {
             setIsEditingTitle(false);
         }
     };
+
+    const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
+    const typeSelectorRef = useRef<HTMLDivElement>(null);
+
+    // Close type selector on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (typeSelectorRef.current && !typeSelectorRef.current.contains(event.target as Node)) {
+                setIsTypeSelectorOpen(false);
+            }
+        };
+
+        if (isTypeSelectorOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isTypeSelectorOpen]);
 
     const handleContentChange = useCallback((html: string) => {
         if (!selectedObject) return;
@@ -184,8 +203,39 @@ export const ObjectView = () => {
     return (
         <div className="object-view" onClick={handleMentionClick}>
             <header className="object-header">
-                <div className="object-type-badge" style={{ '--type-color': objectType?.color } as React.CSSProperties}>
-                    <span className="type-name">{objectType?.name.toUpperCase()}</span>
+                <div className="object-type-selector" ref={typeSelectorRef}>
+                    <div
+                        className="object-type-badge clickable"
+                        style={{ '--type-color': objectType?.color } as React.CSSProperties}
+                        onClick={() => setIsTypeSelectorOpen(!isTypeSelectorOpen)}
+                        title="Cambiar tipo de objeto"
+                    >
+                        <span className="type-name">{objectType?.name.toUpperCase()}</span>
+                        <span className="type-chevron">▼</span>
+                    </div>
+
+                    {isTypeSelectorOpen && (
+                        <div className="type-dropdown">
+                            <div className="type-dropdown-header">Cambiar tipo a...</div>
+                            <div className="type-dropdown-list">
+                                {objectTypes.map(type => (
+                                    <button
+                                        key={type.id}
+                                        className={`type-option ${type.id === objectType?.id ? 'active' : ''}`}
+                                        onClick={() => {
+                                            updateObject(selectedObject.id, { type: type.id });
+                                            setIsTypeSelectorOpen(false);
+                                            toast.success('Tipo actualizado', `El objeto ahora es de tipo "${type.name}"`);
+                                        }}
+                                    >
+                                        <LucideIcon name={type.icon} size={14} color={type.color} />
+                                        <span>{type.name}</span>
+                                        {type.id === objectType?.id && <span className="check-icon">✓</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {isEditingTitle ? (

@@ -84,6 +84,7 @@ export interface PropertyDefinition {
 export const BASE_PROPERTIES: PropertyDefinition[] = [
   { id: 'seguimiento', name: 'Seguimiento', type: 'boolean', defaultValue: false },
   { id: 'favorito', name: 'Favorito', type: 'boolean', defaultValue: false },
+  { id: 'relations', name: 'Relaciones', type: 'relation' },
 ];
 
 // Default object types
