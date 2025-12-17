@@ -40,6 +40,7 @@ interface CalendarStore {
     getEventsForDate: (date: Date) => CalendarEvent[];
     getEventsForDateRange: (startDate: Date, endDate: Date) => CalendarEvent[];
     refreshPrimaryToken: () => Promise<boolean>;
+    syncInitial: () => Promise<void>;
 }
 
 export const useCalendarStore = create<CalendarStore>()((set, get) => ({
@@ -67,6 +68,13 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
 
             // Add primary account if logged in
             get().addPrimaryAccount();
+
+            // Initial Sync if token is valid
+            const auth = getFirebaseAuth();
+            const user = auth.currentUser;
+            if (user && !isGoogleAccessTokenExpired()) {
+                await get().syncInitial();
+            }
 
             set({ initialized: true });
             console.log('[CalendarStore] Initialized');
@@ -249,19 +257,32 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         console.log('[CalendarStore] Syncing events for range:', startDate, '-', endDate);
         set({ isSyncing: true, error: null });
 
-        const allEvents: CalendarEvent[] = [];
+        const allEvents: CalendarEvent[] = [...get().events];
+        // Filter out events that are within the sync range to avoid duplicates before adding new ones
+        // actually, simpler to just replace events for the synced calendars in that range? 
+        // For now, let's just append/deduplicate by ID in the end.
 
         try {
             for (const account of get().accounts) {
+                // Check if token is expired before trying
+                if (account.isPrimary && isGoogleAccessTokenExpired()) {
+                    console.log('[CalendarStore] Primary token expired, marking for refresh');
+                    set({ needsTokenRefresh: true, error: 'Sesión caducada. Por favor, reconecta tu cuenta.' });
+                    continue;
+                }
+
                 const selectedCalendarIds = get().syncConfig.selectedCalendars[account.email] || [];
                 const calendars = get().calendars[account.email] || [];
+
+                // If no calendars selected, maybe auto-select primary?
+                // skipping for now.
 
                 for (const calendarId of selectedCalendarIds) {
                     const calendar = calendars.find((c) => c.id === calendarId);
                     if (!calendar) continue;
 
                     try {
-                        const events = await calendarService.fetchEvents(
+                        const newEvents = await calendarService.fetchEvents(
                             account.accessToken,
                             calendarId,
                             account.email,
@@ -270,24 +291,64 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
                             startDate,
                             endDate
                         );
-                        allEvents.push(...events);
+
+                        // Remove existing events for this calendar in this range to avoid duplicates
+                        // filter out events that match this calendarID AND are within range
+                        // This is a bit complex with existing array. 
+                        // Simpler strategy: Filter out ALL events from this calendar, then merge? 
+                        // No, that deletes events outside the range if we only sync a small range.
+
+                        // Strategy: Add to fetched list. We will deduplicate entire 'events' list at the end.
+                        allEvents.push(...newEvents);
+
                     } catch (error) {
                         console.error('[CalendarStore] Error fetching events for calendar:', calendarId, error);
+                        // Check for 401
+                        if (error instanceof Error && (error.message.includes('expired') || error.message.includes('401') || error.message.includes('CalendarAuthError'))) {
+                            set({ needsTokenRefresh: true, error: 'Sesión de Google Calendar caducada' });
+                        }
                     }
                 }
             }
 
+            // Deduplicate events by ID
+            const uniqueEvents = Array.from(new Map(allEvents.map(e => [e.id, e])).values());
+
             set({
-                events: allEvents,
+                events: uniqueEvents,
                 isSyncing: false,
                 syncConfig: { ...get().syncConfig, lastSyncAt: new Date() },
             });
 
-            console.log('[CalendarStore] Synced', allEvents.length, 'events');
+            console.log('[CalendarStore] Synced total unique events:', uniqueEvents.length);
         } catch (error) {
             console.error('[CalendarStore] Sync error:', error);
             set({ error: (error as Error).message, isSyncing: false });
         }
+    },
+
+    // Sync current month first, then surrounding months
+    syncInitial: async () => {
+        const now = new Date();
+
+        // 1. Sync Current Month (High Priority)
+        const startCurrent = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endCurrent = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        console.log('[CalendarStore] Starting initial sync (Phase 1: Current Month)');
+        await get().syncEvents(startCurrent, endCurrent);
+
+        // 2. Background Sync (Surrounding Months: -1 to +6 months)
+        // We run this without awaiting to unblock UI, but since functions are async, 'await' here just blocks this function, not UI thread.
+        console.log('[CalendarStore] Starting initial sync (Phase 2: Surrounding Months)');
+
+        const startBack = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endForward = new Date(now.getFullYear(), now.getMonth() + 6, 0); // 6 months ahead
+
+        // Avoid re-syncing the current month part if possible, but overlapping is safer/easier
+        await get().syncEvents(startBack, endForward);
+
+        console.log('[CalendarStore] Initial sync complete');
     },
 
     getEventsForDate: (date: Date) => {
@@ -358,6 +419,9 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
                 if (user?.email) {
                     await get().fetchCalendars(user.email);
                 }
+
+                // Trigger initial sync for current view + background
+                await get().syncInitial();
 
                 return true;
             } else {
