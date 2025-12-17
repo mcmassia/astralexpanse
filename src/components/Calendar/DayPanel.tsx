@@ -47,10 +47,25 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
 
     // Get daily note for this date
     const dailyNote = useMemo(() => {
-        return objects.find(obj =>
-            obj.type === 'daily' &&
-            (obj.properties.date === dateStr || obj.title === dailyNoteTitle || obj.title === dateStr)
-        );
+        return objects.find(obj => {
+            if (obj.type !== 'daily') return false;
+
+            if (obj.title === dailyNoteTitle || obj.title === dateStr) return true;
+
+            const pDate = obj.properties.date || obj.properties.fecha;
+            if (!pDate) return false;
+
+            if (typeof pDate === 'string') {
+                if (pDate === dateStr) return true;
+                const d = new Date(pDate);
+                if (!isNaN(d.getTime()) && formatDateISO(d) === dateStr) {
+                    return true;
+                }
+            } else if (pDate instanceof Date) {
+                if (formatDateISO(pDate) === dateStr) return true;
+            }
+            return false;
+        });
     }, [objects, dateStr, dailyNoteTitle]);
 
     // Get objects with date property matching this date (NOT created on this date)
@@ -59,7 +74,17 @@ export const DayPanel = ({ date, isCenter = false, compact = false }: DayPanelPr
             .filter(obj => {
                 if (obj.type === 'daily') return false;
                 const dateValue = obj.properties.date || obj.properties.fecha;
-                return typeof dateValue === 'string' && dateValue === dateStr;
+
+                if (typeof dateValue === 'string') {
+                    if (dateValue === dateStr) return true;
+                    const d = new Date(dateValue);
+                    if (!isNaN(d.getTime()) && formatDateISO(d) === dateStr) {
+                        return true;
+                    }
+                } else if (dateValue instanceof Date) {
+                    if (formatDateISO(dateValue) === dateStr) return true;
+                }
+                return false;
             })
             .slice(0, compact ? 3 : 5);
     }, [objects, dateStr, compact]);

@@ -31,8 +31,21 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
         const dates = new Set<string>();
         objects.forEach(obj => {
             if (obj.type === 'daily') {
-                const dateStr = obj.properties.date as string;
-                if (dateStr) dates.add(dateStr);
+                const dateVal = obj.properties.date || obj.properties.fecha;
+
+                if (typeof dateVal === 'string') {
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+                        dates.add(dateVal);
+                    } else {
+                        const d = new Date(dateVal);
+                        if (!isNaN(d.getTime())) {
+                            dates.add(formatDateISO(d));
+                        }
+                    }
+                } else if (dateVal instanceof Date) {
+                    dates.add(formatDateISO(dateVal));
+                }
+
                 // Also check title format YYYY/MM/DD
                 if (obj.title && /^\d{4}\/\d{2}\/\d{2}$/.test(obj.title)) {
                     const isoDate = obj.title.replace(/\//g, '-');
@@ -49,8 +62,18 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
         objects.forEach(obj => {
             if (obj.type === 'daily') return;
             const dateValue = obj.properties.date || obj.properties.fecha;
-            if (typeof dateValue === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-                dates.add(dateValue);
+
+            if (typeof dateValue === 'string') {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                    dates.add(dateValue);
+                } else {
+                    const d = new Date(dateValue);
+                    if (!isNaN(d.getTime())) {
+                        dates.add(formatDateISO(d));
+                    }
+                }
+            } else if (dateValue instanceof Date) {
+                dates.add(formatDateISO(dateValue));
             }
         });
         return dates;
@@ -62,7 +85,17 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
         return objects.filter(obj => {
             if (obj.type === 'daily') return false;
             const dateValue = obj.properties.date || obj.properties.fecha;
-            return typeof dateValue === 'string' && dateValue === selectedStr;
+
+            if (typeof dateValue === 'string') {
+                if (dateValue === selectedStr) return true;
+                const d = new Date(dateValue);
+                if (!isNaN(d.getTime()) && formatDateISO(d) === selectedStr) {
+                    return true;
+                }
+            } else if (dateValue instanceof Date) {
+                if (formatDateISO(dateValue) === selectedStr) return true;
+            }
+            return false;
         });
     }, [objects, selectedDate]);
 
@@ -70,10 +103,25 @@ export const MiniCalendar = ({ collapsed = false, onToggle }: MiniCalendarProps)
     const dailyNote = useMemo(() => {
         const dateStr = formatDateISO(selectedDate);
         const titleFormat = `${selectedDate.getFullYear()}/${String(selectedDate.getMonth() + 1).padStart(2, '0')}/${String(selectedDate.getDate()).padStart(2, '0')}`;
-        return objects.find(obj =>
-            obj.type === 'daily' &&
-            (obj.properties.date === dateStr || obj.title === titleFormat || obj.title === dateStr)
-        );
+        return objects.find(obj => {
+            if (obj.type !== 'daily') return false;
+
+            if (obj.title === titleFormat || obj.title === dateStr) return true;
+
+            const pDate = obj.properties.date || obj.properties.fecha;
+            if (!pDate) return false;
+
+            if (typeof pDate === 'string') {
+                if (pDate === dateStr) return true;
+                const d = new Date(pDate);
+                if (!isNaN(d.getTime()) && formatDateISO(d) === dateStr) {
+                    return true;
+                }
+            } else if (pDate instanceof Date) {
+                if (formatDateISO(pDate) === dateStr) return true;
+            }
+            return false;
+        });
     }, [objects, selectedDate]);
 
     // Google Calendar events for selected date

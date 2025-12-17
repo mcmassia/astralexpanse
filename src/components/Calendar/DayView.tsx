@@ -29,10 +29,30 @@ export const DayView = () => {
     // Get daily note for selected date
     const dailyNote = useMemo(() => {
         const dateStr = formatDateISO(selectedDate);
-        return objects.find(obj =>
-            obj.type === 'daily' &&
-            (obj.properties.date === dateStr || obj.title === dailyNoteTitle || obj.title === dateStr)
-        );
+        return objects.find(obj => {
+            if (obj.type !== 'daily') return false;
+
+            // Match by title
+            if (obj.title === dailyNoteTitle || obj.title === dateStr) return true;
+
+            // Match by date property (check both date and fecha)
+            const pDate = obj.properties.date || obj.properties.fecha;
+            if (!pDate) return false;
+
+            if (typeof pDate === 'string') {
+                if (pDate === dateStr) return true;
+                const d = new Date(pDate);
+                if (!isNaN(d.getTime()) && formatDateISO(d) === dateStr) {
+                    return true;
+                }
+            }
+
+            if (pDate instanceof Date) {
+                if (formatDateISO(pDate) === dateStr) return true;
+            }
+
+            return false;
+        });
     }, [objects, selectedDate, dailyNoteTitle]);
 
     // Get objects with date properties matching selected date (NOT created/modified on date)
@@ -42,8 +62,15 @@ export const DayView = () => {
             if (obj.type === 'daily') return false;
             // Check if "date" or "fecha" property matches
             const dateValue = obj.properties.date || obj.properties.fecha;
-            if (typeof dateValue === 'string' && dateValue === dateStr) {
-                return true;
+
+            if (typeof dateValue === 'string') {
+                if (dateValue === dateStr) return true;
+                const d = new Date(dateValue);
+                if (!isNaN(d.getTime()) && formatDateISO(d) === dateStr) {
+                    return true;
+                }
+            } else if (dateValue instanceof Date) {
+                if (formatDateISO(dateValue) === dateStr) return true;
             }
             return false;
         });
