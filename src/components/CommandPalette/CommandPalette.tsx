@@ -159,6 +159,41 @@ export const CommandPalette = ({ onOpenImport }: CommandPaletteProps) => {
                 onOpenImport?.();
             },
         },
+        {
+            id: 'go-home',
+            label: 'Ir al inicio',
+            icon: '🏠',
+            category: 'navigation',
+            shortcut: '⌘ H',
+            action: () => {
+                const { setCurrentSection } = useUIStore.getState();
+                setCurrentSection('dashboard');
+                closeCommandPalette();
+            },
+        },
+        {
+            id: 'focus-mode',
+            label: 'Enfocar',
+            icon: '🎯',
+            category: 'navigation',
+            shortcut: '⌘ .',
+            action: () => {
+                const { toggleFocusMode, focusMode } = useUIStore.getState();
+                if (!focusMode) toggleFocusMode();
+                closeCommandPalette();
+            },
+        },
+        {
+            id: 'unfocus-mode',
+            label: 'Desenfocar',
+            icon: '👀',
+            category: 'navigation',
+            action: () => {
+                const { exitFocusMode, focusMode } = useUIStore.getState();
+                if (focusMode) exitFocusMode();
+                closeCommandPalette();
+            },
+        },
     ], [closeCommandPalette, openSettings, setTheme, signOut, onOpenImport]);
 
     // Create actions for each object type

@@ -21,7 +21,7 @@ import './index.css';
 function App() {
   const { user, isLoading: authLoading, error: authError, signIn, initialize: initAuth } = useAuthStore();
   const { isLoading: objectsLoading, initialize: initObjects } = useObjectStore();
-  const { theme, openCommandPalette, commandPaletteOpen, currentSection, calendarSidebarOpen, toggleCalendarSidebar, focusMode, toggleFocusMode, exitFocusMode } = useUIStore();
+  const { theme, openCommandPalette, commandPaletteOpen, currentSection, setCurrentSection, calendarSidebarOpen, toggleCalendarSidebar, focusMode, toggleFocusMode, exitFocusMode } = useUIStore();
   const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
   const selectedObjectId = useObjectStore((s) => s.selectedObjectId);
   const selectObject = useObjectStore((s) => s.selectObject);
@@ -117,17 +117,20 @@ function App() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
-      // Cmd+K or Ctrl+K: Open quick search (only when NOT in editor/input)
-      // When in editor, let Editor.tsx handle it for link modal
+      // Cmd+K or Ctrl+K: Open quick search (Always, replacing link modal)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        if (isInput) {
-          // Let the Editor handle Cmd+K for link modal
-          return;
-        }
         e.preventDefault();
+        e.stopPropagation();
         if (!commandPaletteOpen) {
           openCommandPalette('quick');
         }
+        return;
+      }
+
+      // Cmd+H or Ctrl+H: Go to Dashboard
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+        e.preventDefault();
+        setCurrentSection('dashboard');
         return;
       }
 
@@ -167,7 +170,7 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openCommandPalette, commandPaletteOpen, focusMode, toggleFocusMode, exitFocusMode]);
+  }, [openCommandPalette, commandPaletteOpen, focusMode, toggleFocusMode, exitFocusMode, setCurrentSection]);
 
   // Loading state
   if (authLoading) {

@@ -32,6 +32,11 @@ const COLOR_SUGGESTIONS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'
 export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModalProps) => {
     const createObjectType = useObjectStore(s => s.createObjectType);
     const updateObjectType = useObjectStore(s => s.updateObjectType);
+    const deleteObjectType = useObjectStore(s => s.deleteObjectType);
+    const countObjectsByType = useObjectStore(s => s.objects).reduce((acc, obj) => {
+        acc[obj.type] = (acc[obj.type] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
     const objectTypes = useObjectStore(s => s.objectTypes);
     const toast = useToast();
 
@@ -157,6 +162,33 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                 toast.success('Tipo creado', `"${typeData.name}" ha sido creado correctamente.`);
             }
 
+            onClose();
+        } catch (err) {
+            setError((err as Error).message);
+            toast.error('Error', (err as Error).message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteType = async () => {
+        if (!editingType) return;
+
+        // Double check usage
+        const count = countObjectsByType[editingType.id] || 0;
+        if (count > 0) {
+            setError(`No se puede eliminar este tipo porque hay ${count} objeto(s) usándolo. Elimina los objetos primero.`);
+            return;
+        }
+
+        if (!window.confirm(`¿Estás seguro de que quieres eliminar el tipo "${editingType.name}"? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await deleteObjectType(editingType.id);
+            toast.success('Tipo eliminado', `"${editingType.name}" ha sido eliminado correctamente.`);
             onClose();
         } catch (err) {
             setError((err as Error).message);
@@ -354,7 +386,26 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                             </div>
                         )}
                     </div>
-                    <button className="modal-close" onClick={onClose}>✕</button>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {editingType && (
+                            <button
+                                className="modal-header-action delete"
+                                onClick={handleDeleteType}
+                                title="Eliminar tipo"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-secondary)',
+                                    padding: '0.25rem'
+                                }}
+                            >
+                                🗑️
+                            </button>
+                        )}
+                        <button className="modal-close" onClick={onClose}>✕</button>
+                    </div>
                 </header>
 
                 {/* Tabs */}
@@ -529,9 +580,11 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                     )}
                 </div>
 
-                {error && (
-                    <div className="modal-error" style={{ margin: '0 1.5rem 1rem' }}>{error}</div>
-                )}
+                {
+                    error && (
+                        <div className="modal-error" style={{ margin: '0 1.5rem 1rem' }}>{error}</div>
+                    )
+                }
 
                 <footer className="modal-footer">
                     <button className="btn-secondary" onClick={onClose}>
@@ -545,7 +598,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                         {isSaving ? 'Guardando...' : (editingType ? 'Guardar cambios' : 'Crear tipo')}
                     </button>
                 </footer>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
