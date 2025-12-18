@@ -58,13 +58,6 @@ export const ObjectLink = Link.extend({
                 default: null,
                 renderHTML: attributes => {
                     if (!attributes.href?.startsWith('object:')) return {};
-                    const id = attributes.href.split(':')[1];
-                    const obj = useObjectStore.getState().objects.find(o => o.id === id);
-                    if (!obj) return {};
-                    const type = useObjectStore.getState().objectTypes.find(t => t.id === obj.type);
-                    // We can't easily render Lucide icons in CSS content, but we can try emoji or generic text
-                    // Or we could use a NodeView, but that's complex for inline marks.
-                    // For now, let's use the type name in the badge.
                     return {};
                 }
             }
