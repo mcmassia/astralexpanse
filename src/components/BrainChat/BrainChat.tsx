@@ -8,6 +8,7 @@ import { useCalendarStore } from '../../stores/calendarStore';
 import type { ChatMessage } from '../../types/ai';
 import { useUIStore } from '../../stores/uiStore';
 import { aiService } from '../../services/ai';
+import { initializeFirebase } from '../../services/firebase';
 import { marked } from 'marked';
 import { useToast } from '../common';
 import './BrainChat.css';
@@ -29,11 +30,16 @@ const cosineSimilarity = (vecA: number[], vecB: number[]) => {
 export const BrainChat = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [retryStatus, setRetryStatus] = useState<{ isRetrying: boolean; attempt: number; reason: string } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const { objects, objectTypes, createObject, updateObject } = useObjectStore();
-    const { isEnabled, apiKey, chatHistory, addChatMessage } = useAIStore();
+    const { isEnabled, apiKey, chatHistory, addChatMessage, loadChatFromFirestore, saveChatToFirestore, subscribeToFirestore, getContextFromCache, addContextCacheEntry } = useAIStore();
     const { setCurrentSection, pushNavHistory } = useUIStore();
+
+    // Get current user for Firestore persistence
+    const { auth } = initializeFirebase();
+    const userId = auth.currentUser?.uid;
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +48,22 @@ export const BrainChat = () => {
     useEffect(() => {
         scrollToBottom();
     }, [chatHistory, isLoading]);
+
+    // Load chat history from Firestore on mount
+    useEffect(() => {
+        if (userId) {
+            loadChatFromFirestore(userId);
+            const unsubscribe = subscribeToFirestore(userId);
+            return () => unsubscribe();
+        }
+    }, [userId, loadChatFromFirestore, subscribeToFirestore]);
+
+    // Save chat to Firestore whenever it changes (debounced via length check)
+    useEffect(() => {
+        if (userId && chatHistory.length > 1) {
+            saveChatToFirestore(userId);
+        }
+    }, [chatHistory.length, userId, saveChatToFirestore]);
 
     // Handle clicking on "object:ID" links
     const handleMessageClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -171,8 +193,23 @@ export const BrainChat = () => {
             // 2. PRE-FILTERING (Hard Filters)
             let filteredObjects = objects.filter(obj => {
                 // Type Filter
-                if (analysis.filters.type && obj.type.toLowerCase() !== analysis.filters.type.toLowerCase()) {
-                    if (!obj.type.toLowerCase().includes(analysis.filters.type.toLowerCase())) return false;
+                if (analysis.filters.type) {
+                    const filterTypeTerm = analysis.filters.type.toLowerCase();
+                    const objectTypes = useObjectStore.getState().objectTypes;
+
+                    // Resolve filterTypeTerm to an actual objectType ID by matching name or namePlural
+                    const matchedType = objectTypes.find(t =>
+                        t.name.toLowerCase() === filterTypeTerm ||
+                        t.namePlural.toLowerCase() === filterTypeTerm
+                    );
+
+                    if (matchedType) {
+                        // Filter by the resolved ID
+                        if (obj.type !== matchedType.id) return false;
+                    } else {
+                        // Fallback: if no type matched by name, try matching by ID directly (less likely)
+                        if (obj.type.toLowerCase() !== filterTypeTerm) return false;
+                    }
                 }
 
                 // Date Filter (Recency)
@@ -193,42 +230,56 @@ export const BrainChat = () => {
                 filteredObjects = objects;
             }
 
-            // 3. VECTOR SEARCH + RECENCY WEIGHTING
+            // 3. CHECK CONTEXT CACHE
+            const cachedObjectIds = getContextFromCache(analysis.searchQuery);
             let scoredCandidates: { obj: any; score: number; reason: string }[] = [];
 
-            try {
-                let embeddingQuery = analysis.searchQuery;
-                // Add short-term history context
-                const recentMsgs = chatHistory.slice(-2).filter(m => m.role === 'user');
-                if (recentMsgs.length > 0 && embeddingQuery.length < 20) {
-                    embeddingQuery = recentMsgs.map(m => m.content).join(' ') + ' ' + embeddingQuery;
-                }
-
-                const queryEmbedding = await aiService.getEmbeddings(embeddingQuery);
-
-                scoredCandidates = filteredObjects
-                    .map(obj => {
-                        let score = obj.embedding ? cosineSimilarity(queryEmbedding, obj.embedding) : 0;
-
-                        // Recency Boost
-                        const daysOld = (Date.now() - new Date(obj.updatedAt).getTime()) / (1000 * 3600 * 24);
-                        if (daysOld < 1) score += 0.15;
-                        else if (daysOld < 7) score += 0.08;
-                        else if (daysOld < 30) score += 0.04;
-
-                        // Title Keyword Boost
-                        if (embeddingQuery.toLowerCase().includes(obj.title.toLowerCase())) {
-                            score += 0.3;
-                        }
-
-                        return { obj, score, reason: 'semantic' };
+            if (cachedObjectIds && cachedObjectIds.length > 0) {
+                console.log('[BrainChat] Cache HIT! Using cached context.');
+                scoredCandidates = cachedObjectIds
+                    .map(id => {
+                        const obj = filteredObjects.find(o => o.id === id);
+                        return obj ? { obj, score: 1, reason: 'cached' } : null;
                     })
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 15);
+                    .filter(Boolean) as { obj: any; score: number; reason: string }[];
+            } else {
+                // 4. VECTOR SEARCH + RECENCY WEIGHTING (Cache MISS)
+                console.log('[BrainChat] Cache MISS. Performing full RAG.');
 
-            } catch (e) {
-                console.warn('Vector search failed:', e);
-            }
+                try {
+                    let embeddingQuery = analysis.searchQuery;
+                    // Add short-term history context
+                    const recentMsgs = chatHistory.slice(-2).filter(m => m.role === 'user');
+                    if (recentMsgs.length > 0 && embeddingQuery.length < 20) {
+                        embeddingQuery = recentMsgs.map(m => m.content).join(' ') + ' ' + embeddingQuery;
+                    }
+
+                    const queryEmbedding = await aiService.getEmbeddings(embeddingQuery);
+
+                    scoredCandidates = filteredObjects
+                        .map(obj => {
+                            let score = obj.embedding ? cosineSimilarity(queryEmbedding, obj.embedding) : 0;
+
+                            // Recency Boost
+                            const daysOld = (Date.now() - new Date(obj.updatedAt).getTime()) / (1000 * 3600 * 24);
+                            if (daysOld < 1) score += 0.15;
+                            else if (daysOld < 7) score += 0.08;
+                            else if (daysOld < 30) score += 0.04;
+
+                            // Title Keyword Boost
+                            if (embeddingQuery.toLowerCase().includes(obj.title.toLowerCase())) {
+                                score += 0.3;
+                            }
+
+                            return { obj, score, reason: 'semantic' };
+                        })
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 15);
+
+                } catch (e) {
+                    console.warn('Vector search failed:', e);
+                }
+            } // End of cache miss block
 
             // 4. GRAPH TRAVERSAL (Fetch Neighbors)
             const graphCandidates: typeof scoredCandidates = [];
@@ -271,6 +322,10 @@ export const BrainChat = () => {
             const finalContextObjects = Array.from(uniqueMap.values())
                 .sort((a, b: any) => b.score - a.score)
                 .slice(0, 30);
+
+            // Save context to cache for future queries
+            const objectIdsForCache = finalContextObjects.map(c => c.obj.id);
+            addContextCacheEntry(analysis.searchQuery, objectIdsForCache);
 
             // 5. CALENDAR EVENTS CONTEXT
             // We use the store directly to get synchronized events
@@ -347,7 +402,15 @@ ${cleanContent.slice(0, charLimit)}
                 parts: [{ text: m.content }] as [{ text: string }]
             }));
 
-            const responseText = await aiService.chat(userMsg.content, contextDocs, historyForApi);
+            const responseText = await aiService.chat(
+                userMsg.content,
+                contextDocs,
+                historyForApi,
+                (attempt, _delayMs, reason) => {
+                    setRetryStatus({ isRetrying: true, attempt, reason });
+                }
+            );
+            setRetryStatus(null); // Clear retry status on success
 
             addChatMessage({
                 id: (Date.now() + 1).toString(),
@@ -423,7 +486,16 @@ ${cleanContent.slice(0, charLimit)}
                     <div className="message-wrapper model loading">
                         <div className="message-avatar"><Bot size={18} /></div>
                         <div className="message-bubble">
-                            <Loader2 className="animate-spin" size={20} />
+                            {retryStatus ? (
+                                <div className="retry-status">
+                                    <Loader2 className="animate-spin" size={16} />
+                                    <span>
+                                        {retryStatus.reason}. Reintentando (intento {retryStatus.attempt}/3)...
+                                    </span>
+                                </div>
+                            ) : (
+                                <Loader2 className="animate-spin" size={20} />
+                            )}
                         </div>
                     </div>
                 )}

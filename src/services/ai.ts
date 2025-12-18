@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useAIStore } from '../stores/aiStore';
+import { useObjectStore } from '../stores/objectStore';
 
 class AIService {
     private getClient() {
@@ -71,16 +72,32 @@ class AIService {
         intent: 'search' | 'summary' | 'count';
     }> {
         const model = this.getModel('smartConstructor'); // Use a fast model if possible
+
+        // Dynamic Type Injection - Use ONLY name and namePlural, never IDs
+        const objectTypes = useObjectStore.getState().objectTypes;
+        const typeList = objectTypes.map(t =>
+            `"${t.name}" (plural: "${t.namePlural}")`
+        ).join(', ');
+
         const prompt = `
         You are a Search Router for a Personal Knowledge Management (PKM) system.
         Analyze the user's query and extract filters and search intent.
         
+        AVAILABLE OBJECT TYPES (use EXACTLY these names):
+        ${typeList}
+        
         USER QUERY: "${query}"
+        
+        CRITICAL RULES FOR TYPE FILTER:
+        - The "type" field MUST be set to one of the EXACT values from AVAILABLE OBJECT TYPES above (singular name or plural name).
+        - Do NOT translate or interpret the type. Use the EXACT string from the list.
+        - If the user says "tareas", return "Tareas". If they say "proyecto", return "Proyecto".
+        - If no type matches, set type to null.
         
         Return JSON ONLY:
         {
           "filters": {
-            "type": "string (mapped to standard types like 'project', 'book', 'meeting', 'person', 'note' or null)",
+            "type": "string (EXACT name or plural name from AVAILABLE OBJECT TYPES, or null)",
             "tags": ["string array"],
             "dateRange": "enum: 'last_7_days', 'last_30_days', 'future' or null"
           },
@@ -88,8 +105,8 @@ class AIService {
           "intent": "enum: 'search', 'summary', 'count'"
         }
         
-        Example: "Resume the meetings from last week"
-        Response: { "filters": { "type": "meeting", "dateRange": "last_7_days" }, "searchQuery": "resume minutes", "intent": "summary" }
+        Example: "Resume las reuniones de la semana pasada"
+        Response: { "filters": { "type": "Reuniones", "dateRange": "last_7_days" }, "searchQuery": "resumen actas", "intent": "summary" }
         `;
 
         try {
@@ -103,14 +120,27 @@ class AIService {
         }
     }
 
-    private async retry<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+    private async retry<T>(
+        fn: () => Promise<T>,
+        retries = 3,
+        delay = 2000,
+        onRetry?: (attempt: number, delayMs: number, reason: string) => void
+    ): Promise<T> {
         try {
             return await fn();
         } catch (error: any) {
-            if (retries > 0 && error?.message?.includes('429')) {
-                console.warn(`[AI] Rate limited (429). Retrying in ${delay}ms...`);
+            const isRetryable =
+                error?.message?.includes('429') ||
+                error?.message?.includes('503') ||
+                error?.message?.includes('overloaded') ||
+                error?.message?.includes('Service Unavailable');
+
+            if (retries > 0 && isRetryable) {
+                const reason = error?.message?.includes('429') ? 'Rate Limited (429)' : 'Model Overloaded (503)';
+                console.warn(`[AI] ${reason}. Retrying in ${delay}ms... (${retries} retries left)`);
+                onRetry?.(4 - retries, delay, reason);
                 await new Promise(resolve => setTimeout(resolve, delay));
-                return this.retry(fn, retries - 1, delay * 2);
+                return this.retry(fn, retries - 1, delay * 2, onRetry);
             }
             throw error;
         }
@@ -119,7 +149,8 @@ class AIService {
     async chat(
         message: string,
         contextDocs: string[],
-        history: { role: 'user' | 'model', parts: [{ text: string }] }[] = []
+        history: { role: 'user' | 'model', parts: [{ text: string }] }[] = [],
+        onRetry?: (attempt: number, delayMs: number, reason: string) => void
     ) {
         const model = this.getModel('chat');
 
@@ -150,8 +181,8 @@ class AIService {
             ]
         });
 
-        // Use retry wrapper
-        const result = await this.retry(() => chat.sendMessage(message));
+        // Use retry wrapper with onRetry callback
+        const result = await this.retry(() => chat.sendMessage(message), 3, 2000, onRetry);
         const response = await result.response;
         return response.text();
     }

@@ -186,6 +186,18 @@ export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
     icon: '📝',
     color: '#60a5fa',
     properties: []
+  },
+  {
+    id: 'tarea',
+    name: 'Tarea',
+    namePlural: 'Tareas',
+    icon: '✅',
+    color: '#f87171',
+    properties: [
+      { id: 'status', name: 'Estado', type: 'select', options: ['Nueva', 'En progreso', 'Completada', 'Cancelada'] },
+      { id: 'priority', name: 'Prioridad', type: 'select', options: ['Baja', 'Media', 'Alta'] },
+      { id: 'dueDate', name: 'Fecha Vencimiento', type: 'date' }
+    ]
   }
 ];
 

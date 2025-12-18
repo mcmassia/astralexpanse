@@ -11,3 +11,9 @@ export interface AIModelConfig {
     chat: string;
     embeddings: string;
 }
+
+export interface ContextCacheEntry {
+    queryHash: string;
+    objectIds: string[];
+    timestamp: number;
+}

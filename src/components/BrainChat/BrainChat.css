@@ -302,3 +302,16 @@
 .message-wrapper.user .object-link-pill:hover {
     background: rgba(255, 255, 255, 0.3);
 }
+
+/* Retry status indicator */
+.retry-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.retry-status svg {
+    color: #f59e0b;
+}
