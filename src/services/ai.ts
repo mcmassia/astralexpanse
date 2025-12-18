@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useAIStore } from '../stores/aiStore';
 
 class AIService {
@@ -19,7 +19,7 @@ class AIService {
     async generateObject(
         prompt: string,
         schema?: any, // We can refine this type if using valid SchemaType
-        schemaName: string = 'Response'
+        // schemaName: string = 'Response' // Unused
     ): Promise<any> {
         const model = this.getModel('smartConstructor');
 

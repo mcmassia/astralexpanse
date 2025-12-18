@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, Loader2, Save, FileText, ArrowRight, Paperclip, X, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Save } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useObjectStore } from '../../stores/objectStore';
