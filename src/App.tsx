@@ -14,6 +14,9 @@ import { MiniCalendar } from './components/Calendar/MiniCalendar';
 import { CommandPalette } from './components/CommandPalette';
 import { ImportModal } from './components/Import/ImportModal';
 import { NavBar } from './components/NavBar';
+import { SemanticGardener } from './components/Sidebar/SemanticGardener';
+import { SettingsModal } from './components/Settings/SettingsModal';
+import { BrainChat } from './components/BrainChat/BrainChat';
 import { ToastProvider } from './components/common';
 import { getGoogleAccessTokenExpiration } from './services/firebase';
 import './index.css';
@@ -26,6 +29,7 @@ function App() {
   const selectedObjectId = useObjectStore((s) => s.selectedObjectId);
   const selectObject = useObjectStore((s) => s.selectObject);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const settingsOpen = useUIStore((s) => s.settingsOpen);
 
   // Initialize auth listener
   useEffect(() => {
@@ -221,6 +225,8 @@ function App() {
         return <Dashboard />;
       case 'calendar':
         return <Calendar />;
+      case 'chat':
+        return <BrainChat />;
       case 'objects':
         // Objects view: show list when no object selected, detail when selected
         if (selectedObjectId) {
@@ -248,6 +254,9 @@ function App() {
             collapsed={!calendarSidebarOpen}
             onToggle={toggleCalendarSidebar}
           />
+          {calendarSidebarOpen && selectedObjectId && (
+            <SemanticGardener />
+          )}
         </aside>
 
         {/* Command Palette */}
@@ -255,6 +264,9 @@ function App() {
 
         {/* Import Modal */}
         <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
+
+        {/* Settings Modal */}
+        <SettingsModal isOpen={settingsOpen} onClose={useUIStore.getState().closeSettings} />
       </div>
     </ToastProvider>
   );

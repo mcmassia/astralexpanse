@@ -270,7 +270,10 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
                                         <td className="col-type">
                                             <span
                                                 className="type-badge"
-                                                style={{ '--type-color': type?.color } as React.CSSProperties}
+                                                style={{
+                                                    '--type-color': type?.color,
+                                                    backgroundColor: type?.color
+                                                } as React.CSSProperties}
                                             >
                                                 {type?.name}
                                             </span>

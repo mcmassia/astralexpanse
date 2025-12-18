@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@aarkue/tiptap-math-extension": "^1.4.0",
+    "@google/generative-ai": "^0.24.1",
     "@tiptap/extension-bubble-menu": "^3.13.0",
     "@tiptap/extension-code-block-lowlight": "^3.13.0",
     "@tiptap/extension-horizontal-rule": "^3.13.0",

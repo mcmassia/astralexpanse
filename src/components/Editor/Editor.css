@@ -867,3 +867,47 @@
 .is-hidden-content {
   display: none !important;
 }
+
+/* Object Link Pills in Editor */
+.editor-content .tiptap .object-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(120, 120, 120, 0.1);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 0 8px 0 4px;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  vertical-align: middle;
+  margin: 0 2px;
+  transition: all 0.2s ease;
+  color: var(--text-primary) !important;
+  font-weight: 500;
+  position: relative;
+  line-height: normal;
+  height: 1.5em;
+}
+
+.editor-content .tiptap .object-link-pill:hover {
+  background: rgba(120, 120, 120, 0.2);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.editor-content .tiptap .object-link-pill::before {
+  content: attr(data-type-name);
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--obj-color, #a855f7);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0 4px;
+  border-radius: 4px;
+  height: 16px;
+  margin-right: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}

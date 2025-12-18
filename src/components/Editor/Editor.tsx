@@ -9,14 +9,13 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
-import { Link } from '@tiptap/extension-link';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { Underline } from '@tiptap/extension-underline';
 import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
-import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading } from './extensions';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading, ObjectLink } from './extensions';
 import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
@@ -272,12 +271,12 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             TableRow,
             TableHeader,
             TableCell,
-            Link.configure({
-                openOnClick: true,
+            TableCell,
+            ObjectLink.configure({
+                openOnClick: false, // We handle it manually in handleLinkClick to avoid default behavior
                 HTMLAttributes: {
                     class: 'editor-link',
-                    target: '_blank',
-                    rel: 'noopener noreferrer',
+                    // Removed target='_blank' to allow intercepting
                 },
             }),
             CodeBlockLowlight.configure({

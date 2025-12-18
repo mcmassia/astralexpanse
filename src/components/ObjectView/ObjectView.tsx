@@ -8,6 +8,8 @@ import { PropertiesPanel } from './PropertiesPanel';
 // AttachmentsPanel hidden for now - attachments are now objects of type "Adjunto"
 // import { AttachmentsPanel } from './AttachmentsPanel';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
+import { EntityExtractor } from '../Editor/EntityExtractor';
+import { BrainCircuit } from 'lucide-react';
 import './ObjectView.css';
 
 export const ObjectView = () => {
@@ -33,6 +35,7 @@ export const ObjectView = () => {
     const [titleValue, setTitleValue] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showEntityExtractor, setShowEntityExtractor] = useState(false);
     const editorRef = useRef<EditorRef>(null);
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -178,6 +181,22 @@ export const ObjectView = () => {
             }
         }
 
+
+        // Check for Object Link Pill (New formatted links)
+        const objectLinkEl = target.closest('.object-link-pill') || target.closest('a[href^="object:"]');
+        if (objectLinkEl) {
+            const href = objectLinkEl.getAttribute('href');
+            if (href && href.startsWith('object:')) {
+                const id = href.split(':')[1];
+                if (id) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectObject(id);
+                    return;
+                }
+            }
+        }
+
         // Check for mention click (existing behavior)
         if (target.classList.contains('mention') || target.closest('.mention')) {
             const mentionEl = target.classList.contains('mention') ? target : target.closest('.mention') as HTMLElement;
@@ -291,11 +310,26 @@ export const ObjectView = () => {
                     >
                         {focusMode ? '◉' : '○'}
                     </button>
+                    <button
+                        className="action-btn ai-extract"
+                        onClick={() => setShowEntityExtractor(true)}
+                        title="Extraer entidades (IA)"
+                        style={{ color: 'var(--accent-primary)', opacity: 1 }}
+                    >
+                        <BrainCircuit size={20} />
+                    </button>
                     <button className="action-btn delete" onClick={handleDelete} title="Eliminar">
                         🗑️
                     </button>
                 </div>
             </header>
+
+            {showEntityExtractor && selectedObject && (
+                <EntityExtractor
+                    content={selectedObject.content}
+                    onClose={() => setShowEntityExtractor(false)}
+                />
+            )}
 
             {objectType && (
                 <PropertiesPanel

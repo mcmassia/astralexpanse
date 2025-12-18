@@ -25,6 +25,7 @@ export interface AstralObject {
   driveFileId?: string;            // Google Drive file ID
   driveRevisionId?: string;        // For change detection
   attachments?: Attachment[];      // Attached files stored in Drive
+  embedding?: number[];            // Vector embedding for semantic search
 }
 
 export type PropertyValue =
@@ -177,6 +178,14 @@ export const DEFAULT_OBJECT_TYPES: ObjectType[] = [
       { id: 'mimeType', name: 'Tipo MIME', type: 'text' },
       { id: 'relacionado', name: 'Relacionado con', type: 'relation' }
     ]
+  },
+  {
+    id: 'note',
+    name: 'Nota',
+    namePlural: 'Notas',
+    icon: '📝',
+    color: '#60a5fa',
+    properties: []
   }
 ];
 

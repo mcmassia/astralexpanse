@@ -7,6 +7,8 @@ import * as db from '../services/db';
 import * as drive from '../services/drive';
 import { DriveAuthError } from '../services/drive';
 import { useDriveStore } from './driveStore';
+import { aiService } from '../services/ai';
+import { useAIStore } from './aiStore';
 
 interface ObjectStore {
     // State
@@ -52,6 +54,45 @@ interface ObjectStore {
 // Store unsubscribe functions outside of the store state
 let unsubscribeObjects: (() => void) | null = null;
 let unsubscribeTypes: (() => void) | null = null;
+
+// Helper: Partial serialization for efficient embedding
+// We don't need the full ID or links for semantic search, just the descriptive content
+const serializeForEmbedding = (
+    type: string,
+    title: string,
+    content: string = '',
+    tags: string[] = [],
+    properties: Record<string, PropertyValue> = {}
+): string => {
+    // Format complex properties (like relations or lists) into readable text
+    const propsText = Object.entries(properties)
+        .map(([key, value]) => {
+            // Handle arrays (Tags, Multi-Select, Relations)
+            if (Array.isArray(value)) {
+                const values = value.map((v: any) => {
+                    // Handle Relation objects { id, title }
+                    if (typeof v === 'object' && v !== null && 'title' in v) return v.title;
+                    return v;
+                });
+                return `${key}: ${values.join(', ')}`;
+            }
+            // Handle Dates
+            if (value instanceof Date) return `${key}: ${value.toLocaleDateString()}`;
+            // Handle Primitives
+            return `${key}: ${value}`;
+        })
+        .join('\n');
+
+    return `
+Type: ${type}
+Title: ${title}
+Tags: ${tags.join(', ')}
+Properties:
+${propsText}
+Content:
+${content}
+    `.trim();
+};
 
 export const useObjectStore = create<ObjectStore>()(
     subscribeWithSelector((set, get) => ({
@@ -138,6 +179,15 @@ export const useObjectStore = create<ObjectStore>()(
 
                 // Sync to Drive in background - pass the object directly since it's not in state yet
                 get().syncObjectToDrive(newObject);
+
+                // GENAI: Generate embedding in background
+                const aiState = useAIStore.getState();
+                if (aiState.isEnabled && aiState.apiKey) {
+                    const textToEmbed = serializeForEmbedding(type, title, content, [], initialProperties);
+                    aiService.getEmbeddings(textToEmbed)
+                        .then(embedding => db.updateObject(newObject.id, { embedding }))
+                        .catch(err => console.error('[AI] Embedding generation failed:', err));
+                }
 
                 return newObject;
             } catch (error) {
@@ -260,6 +310,26 @@ export const useObjectStore = create<ObjectStore>()(
 
                 // Sync to Drive in background (debounced by caller)
                 get().syncObjectToDrive(id);
+
+                // GENAI: Update embedding if relevant fields changed
+                // Use the merged object (current + updates) for serialization
+                if (updates.title || updates.content || updates.tags || updates.properties) {
+                    const aiState = useAIStore.getState();
+                    if (aiState.isEnabled && aiState.apiKey) {
+                        const updatedObj = { ...currentObject, ...updates };
+                        const textToEmbed = serializeForEmbedding(
+                            updatedObj.type,
+                            updatedObj.title,
+                            updatedObj.content,
+                            updatedObj.tags,
+                            updatedObj.properties
+                        );
+
+                        aiService.getEmbeddings(textToEmbed)
+                            .then(embedding => db.updateObject(id, { embedding }))
+                            .catch(err => console.error('[AI] Embedding update failed:', err));
+                    }
+                }
             } catch (error) {
                 set({ error: (error as Error).message });
                 throw error;

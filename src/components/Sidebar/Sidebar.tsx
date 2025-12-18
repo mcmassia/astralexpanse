@@ -102,6 +102,13 @@ export const Sidebar = () => {
                         >
                             <LucideIcon name="Library" size={20} />
                         </button>
+                        <button
+                            className={`sidebar-collapsed-item ${currentSection === 'chat' ? 'active' : ''}`}
+                            onClick={() => setCurrentSection('chat')}
+                            title="Chat IA"
+                        >
+                            <LucideIcon name="BrainCircuit" size={20} />
+                        </button>
                     </div>
                     <div className="sidebar-collapsed-types">
                         {objectTypes.slice(0, 8).map(type => (
@@ -156,6 +163,13 @@ export const Sidebar = () => {
                     <span className="menu-icon"><LucideIcon name="Library" size={18} /></span>
                     <span className="menu-label">Objetos</span>
                     <span className="menu-count">{objects.length}</span>
+                </button>
+                <button
+                    className={`sidebar-menu-item ${currentSection === 'chat' ? 'active' : ''}`}
+                    onClick={() => setCurrentSection('chat')}
+                >
+                    <span className="menu-icon"><LucideIcon name="BrainCircuit" size={18} /></span>
+                    <span className="menu-label">Chat con Cerebro</span>
                 </button>
             </nav>
 

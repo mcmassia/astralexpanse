@@ -6,7 +6,7 @@ type SidebarTab = 'objects' | 'types' | 'search';
 type Theme = 'light' | 'dark' | 'system';
 type CommandPaletteMode = 'quick' | 'extended';
 type CalendarView = 'day' | 'threeDays' | 'week' | 'month';
-type AppSection = 'dashboard' | 'objects' | 'calendar';
+type AppSection = 'dashboard' | 'objects' | 'calendar' | 'chat';
 
 // Navigation history item - tracks where user has been
 export interface NavHistoryItem {

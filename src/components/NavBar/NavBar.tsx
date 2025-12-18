@@ -3,9 +3,10 @@ import { useUIStore } from '../../stores/uiStore';
 import { useObjectStore } from '../../stores/objectStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useEffect, useRef, useMemo, useState } from 'react';
-import { Search, Plus, LogOut, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, Plus, LogOut, ChevronLeft, ChevronRight, ChevronDown, Sparkles, Settings } from 'lucide-react';
 import { LucideIcon } from '../common';
 import { DriveStatus } from '../DriveStatus';
+import { MagicConstructorModal } from '../MagicConstructor/MagicConstructorModal';
 import './NavBar.css';
 
 // Spanish Catholic Saints Calendar (major feast days)
@@ -57,6 +58,7 @@ export const NavBar = () => {
 
     const isNavigatingRef = useRef(false);
     const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
+    const [showMagicModal, setShowMagicModal] = useState(false);
     const createDropdownRef = useRef<HTMLDivElement>(null);
 
     const canGoBack = navHistoryIndex > 0;
@@ -181,6 +183,15 @@ export const NavBar = () => {
                 </button>
 
                 {/* Create Object Dropdown */}
+                <button
+                    className="nav-bar-btn nav-bar-magic"
+                    onClick={() => setShowMagicModal(true)}
+                    title="Constructor Mágico AI"
+                    style={{ color: '#a855f7', marginRight: '0.5rem' }}
+                >
+                    <Sparkles size={18} />
+                </button>
+
                 <div className="nav-bar-create-wrapper" ref={createDropdownRef}>
                     <button
                         className="nav-bar-btn nav-bar-new-object"
@@ -223,6 +234,14 @@ export const NavBar = () => {
                 <DriveStatus />
 
                 <button
+                    className="nav-bar-btn nav-bar-settings"
+                    onClick={useUIStore.getState().openSettings}
+                    title="Configuración AI"
+                >
+                    <Settings size={18} />
+                </button>
+
+                <button
                     className="nav-bar-btn nav-bar-signout"
                     onClick={handleSignOut}
                     title="Cerrar sesión"
@@ -230,6 +249,17 @@ export const NavBar = () => {
                     <LogOut size={18} />
                 </button>
             </div>
+
+            {showMagicModal && (
+                <MagicConstructorModal
+                    onClose={() => setShowMagicModal(false)}
+                    onSuccess={(newId) => {
+                        setShowMagicModal(false);
+                        selectObject(newId);
+                        setCurrentSection('objects');
+                    }}
+                />
+            )}
         </header>
     );
 };
