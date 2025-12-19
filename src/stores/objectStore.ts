@@ -51,6 +51,146 @@ interface ObjectStore {
     cleanup: () => void;
 }
 
+// Helper: Shadow Chunking Implementation with enhanced parsing and retry logic
+// This simulates the planned Cloud Function by running on the client (for now)
+// to enable granular search capabilities immediately.
+import { parse } from 'node-html-parser';
+import { collection, doc, writeBatch, getDocs, Timestamp } from 'firebase/firestore';
+import { getFirestoreDb } from '../services/firebase'; // Direct import from firebase config
+
+const generateSearchChunks = async (objectId: string, objectTitle: string, htmlContent: string) => {
+    if (!htmlContent) return;
+
+    console.log(`[ShadowChunking] Processing object: ${objectTitle} (${objectId})`);
+
+    // Get the firestore instance
+    const firestore = getFirestoreDb();
+
+    try {
+        const root = parse(htmlContent);
+
+        // Split content into semantic blocks (paragraphs, lists, blockquotes)
+        // Adjust selectors based on TipTap output structure
+        const blocks = root.querySelectorAll('p, li, blockquote, h1, h2, h3');
+
+        // Reference to the subcollection
+        const chunksCollectionRef = collection(firestore, `objects/${objectId}/search_chunks`);
+
+        // 1. DELETE OLD CHUNKS (Cleanup before update)
+        // In a real cloud function we'd use a batched delete, here we do it simply
+        const oldChunksSnapshot = await getDocs(chunksCollectionRef);
+        const deleteBatch = writeBatch(firestore);
+        oldChunksSnapshot.docs.forEach(doc => {
+            deleteBatch.delete(doc.ref);
+        });
+        await deleteBatch.commit();
+
+        // 2. CREATE NEW CHUNKS
+        const createBatch = writeBatch(firestore);
+        let validChunksCount = 0;
+
+        blocks.forEach((block, index) => {
+            const rawText = block.text.trim();
+            if (rawText.length < 5) return; // Skip empty/tiny blocks
+
+            // DEBUG: Log the raw HTML of the block to see exactly what we are parsing
+            console.log(`[ShadowChunking] Block HTML: ${block.toString()}`);
+
+            // Extract inline tags / relations
+            // We need to support multiple formats:
+            // 1. Standard links: <a href="object:ID">Title</a>
+            // 2. Custom nodes (Mentions/Tags): <span data-type="tag" data-id="ID">Title</span>
+            // 3. Hashtags: <span data-type="hashtag" data-hashtag-label="Label">#Label</span> (optional, maybe not treated as relation)
+
+            const inlineTags: string[] = [];
+
+            // 1. Check Anchors
+            const links = block.querySelectorAll('a');
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('object:')) {
+                    const tagTitle = link.text.trim();
+                    if (tagTitle) {
+                        inlineTags.push(tagTitle);
+                        console.log(`[ShadowChunking] Found link relation: "${tagTitle}"`);
+                    }
+                }
+            });
+
+            // 2. Check Spans (Mentions, Tags, Tasks, Hashtags)
+            const spans = block.querySelectorAll('span');
+            spans.forEach(span => {
+                const dataType = span.getAttribute('data-type');
+                const dataId = span.getAttribute('data-id') || span.getAttribute('data-task-id');
+                const classNames = span.getAttribute('class') || '';
+
+                // Debug log for spans to see what we are missing - CRITICAL FOR DEBUGGING
+                if (dataId || dataType) {
+                    console.log(`[ShadowChunking] Inspecting span: type=${dataType}, id=${dataId}, text=${span.text.substring(0, 20)}`);
+                }
+
+                // Check for explicit data types or mention classes
+                if (dataType === 'task-inline' || dataType === 'hashtag' || dataType === 'tag' || dataType === 'mention' || classNames.includes('mention')) {
+                    // Try to get title from attributes first for accuracy
+                    // Added data-mention-label support
+                    let tagTitle = span.getAttribute('data-task-title') ||
+                        span.getAttribute('data-hashtag-label') ||
+                        span.getAttribute('data-mention-label') ||
+                        span.text;
+
+                    // Clean up "TAREA" badge text if parsing raw text
+                    if (!tagTitle && dataType === 'task-inline') {
+                        tagTitle = span.text.replace('TAREA', '').trim();
+                    }
+
+                    if (tagTitle) {
+                        // AGGRESSIVE CLEANING: Replace non-breaking spaces and irregular whitespace with standard space
+                        // This fixes issues where 'Realizado&nbsp;En&nbsp;Local' doesn't match 'Realizado En Local'
+                        tagTitle = tagTitle.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+
+                        inlineTags.push(tagTitle);
+                        console.log(`[ShadowChunking] Found span relation (${dataType}): "${tagTitle}" [Length: ${tagTitle.length}]`);
+                    }
+                }
+            });
+
+            // ENRICH CONTEXT
+            let enrichedContent = rawText;
+            if (inlineTags.length > 0) {
+                // Prepend tags/relations to the chunk text for strong semantic association
+                // We use "RELATIONS" to indicate any object linked in this paragraph
+                enrichedContent = `[RELATIONS: ${inlineTags.join(', ')}] ${rawText}`;
+            }
+
+            // Create chunk document
+            const chunkRef = doc(chunksCollectionRef); // Auto-ID
+            const chunkData = {
+                parentId: objectId,
+                parentTitle: objectTitle,
+                content: enrichedContent, // The queryable text
+                originalText: rawText,
+                tagsInBlock: inlineTags, // We keep this field name for filter compatibility but it stores ANY linked object title
+                blockIndex: index,
+                createdAt: new Date().toISOString()
+            };
+
+            createBatch.set(chunkRef, chunkData);
+            if (inlineTags.length > 0) {
+                console.log(`[ShadowChunking] Queuing chunk with tags:`, inlineTags);
+            }
+            validChunksCount++;
+        });
+
+        if (validChunksCount > 0) {
+            await createBatch.commit();
+            console.log(`[ShadowChunking] Successfully committed ${validChunksCount} chunks for ${objectTitle}`);
+        }
+
+    } catch (error) {
+        console.error('[ShadowChunking] Error generating chunks:', error);
+    }
+};
+
 // Store unsubscribe functions outside of the store state
 let unsubscribeObjects: (() => void) | null = null;
 let unsubscribeTypes: (() => void) | null = null;
@@ -177,6 +317,10 @@ export const useObjectStore = create<ObjectStore>()(
                     isLoading: false,
                 }));
 
+                // TRIGGER SHADOW CHUNKING (Client-side simulation)
+                // We do this asynchronously so it doesn't block the UI
+                generateSearchChunks(newObject.id, newObject.title, newObject.content || '').catch(console.error);
+
                 // Sync to Drive in background - pass the object directly since it's not in state yet
                 get().syncObjectToDrive(newObject);
 
@@ -215,6 +359,196 @@ export const useObjectStore = create<ObjectStore>()(
                     updates.links = newLinks;
                 }
 
+                // HANDLE TITLE RENAME PROPAGATION
+                if (updates.title && updates.title !== currentObject.title) {
+                    const newTitle = updates.title;
+                    const batch = writeBatch(getFirestoreDb());
+                    const objects = get().objects;
+                    // Removed unused objectTypes
+                    let batchCount = 0;
+                    const updatedObjects: AstralObject[] = [];
+
+                    console.log(`[RenamePropagation] START: "${currentObject.title}" -> "${newTitle}" (ID: ${id})`);
+                    console.log(`[RenamePropagation] Scanning ${objects.length} objects for references...`);
+
+                    for (const obj of objects) {
+                        let hasChanges = false;
+                        const objUpdates: any = {};
+                        const objProperties = { ...obj.properties };
+
+                        // 1. Check Relations (Scan ALL properties for relation-like structures)
+                        // Heuristic approach: Check if any property value is an array of objects with { id, title }
+                        // and one of them matches the renamed object ID.
+                        for (const [key, value] of Object.entries(objProperties)) {
+                            if (Array.isArray(value)) {
+                                // DEBUG: Inspect first item to see structure
+                                if (value.length > 0) {
+                                    const first = value[0];
+                                    if (typeof first === 'object' && first !== null) {
+                                        // Log the first item of ANY array property to see what we are dealing with.
+                                        // Limit logging to avoid spamming: only log if it HAS an 'id' but failed the match, or generally for the first few objects.
+                                        // For now, let's log any array that LOOKS like a relation (has id/title) but didn't match, to see the ID.
+                                        if ('id' in first) {
+                                            console.log(`[RenamePropagation] Inspecting potential relation "${key}" in "${obj.title}":`, JSON.stringify(first));
+                                            console.log(`[RenamePropagation] Comparing item.id "${first.id}" with target "${id}"`);
+                                            // Check for type mismatch or whitespace
+                                            if (String(first.id).trim() === String(id).trim() && first.id !== id) {
+                                                console.warn(`[RenamePropagation] ID MISMATCH DUE TO TYPE OR WHITESPACE! '${first.id}' vs '${id}'`);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Handle standard Relations (Array of {id, title})
+                                let propChanged = false;
+                                const newValue = (value as any[]).map((item: any) => {
+                                    // Check if it looks like a relation (has 'id')
+                                    if (typeof item === 'object' && item !== null && 'id' in item) {
+                                        // Use loose comparison or trim to be safe
+                                        const itemId = String(item.id).trim();
+                                        const targetId = String(id).trim();
+
+                                        if (itemId === targetId) {
+                                            console.log(`[RenamePropagation] MATCH found in object "${obj.title}" (${obj.id}), property "${key}"`);
+                                            console.log(`[RenamePropagation] Updating relation title from "${item.title}" to "${newTitle}"`);
+                                            propChanged = true;
+                                            return { ...item, title: newTitle };
+                                        }
+                                    }
+                                    // Check if it is a simple string (e.g. Tags, Multiselect) that matches the OLD title
+                                    else if (typeof item === 'string') {
+                                        if (item === currentObject.title) {
+                                            console.log(`[RenamePropagation] MATCH found in string array property "${key}" in "${obj.title}"`);
+                                            console.log(`[RenamePropagation] Updating string value from "${item}" to "${newTitle}"`);
+                                            propChanged = true;
+                                            return newTitle;
+                                        }
+                                    }
+                                    return item;
+                                });
+
+                                if (propChanged) {
+                                    objProperties[key] = newValue;
+                                    hasChanges = true;
+                                }
+                            }
+                        }
+
+                        // 3. Check 'tags' array field (if it stores names)
+                        if (obj.tags && Array.isArray(obj.tags)) {
+                            let tagsChanged = false;
+                            const newTags = obj.tags.map(tag => {
+                                if (tag === currentObject.title) {
+                                    console.log(`[RenamePropagation] MATCH found in 'tags' of "${obj.title}"`);
+                                    console.log(`[RenamePropagation] Updating tag from "${tag}" to "${newTitle}"`);
+                                    tagsChanged = true;
+                                    return newTitle;
+                                }
+                                return tag;
+                            });
+
+                            if (tagsChanged) {
+                                objUpdates.tags = newTags;
+                                hasChanges = true;
+                            }
+                        }
+
+                        // Set properties update if any changes detected
+                        if (hasChanges) {
+                            objUpdates.properties = objProperties;
+                        }
+
+                        // 2. Check Content: Mentions, Anchors, and Hashtags
+                        // We need to update user-visible text in content for these reference types
+                        if (obj.content && (
+                            obj.content.includes(`data-mention-id="${id}"`) ||
+                            obj.content.includes(`href="object:${id}"`) ||
+                            obj.content.includes(`data-hashtag-id="${id}"`)
+                        )) {
+                            let newContent = obj.content;
+                            let contentModified = false;
+                            console.log(`[RenamePropagation] Checking content of "${obj.title}" for mentions/hashtags...`);
+
+                            // Update Mentions: <span ... data-mention-id="ID" ...>OLD TITLE</span>
+                            // Replaces the text content inside a span that has data-mention-id="ID"
+                            const mentionRegex = new RegExp(`(<span[^>]*data-mention-id="${id}"[^>]*>)([^<]*)(</span>)`, 'g');
+                            if (mentionRegex.test(newContent)) {
+                                console.log(`[RenamePropagation] Updating mention in "${obj.title}"`);
+                                newContent = newContent.replace(new RegExp(`(<span[^>]*data-mention-id="${id}"[^>]*>)([^<]*)(</span>)`, 'g'), `$1@${newTitle}$3`);
+                                contentModified = true;
+                            }
+
+                            // Update Anchors: <a ... href="object:ID" ...>OLD TITLE</a>
+                            const anchorRegex = new RegExp(`(<a[^>]*href="object:${id}"[^>]*>)([^<]*)(</a>)`, 'g');
+                            if (anchorRegex.test(newContent)) {
+                                console.log(`[RenamePropagation] Updating anchor in "${obj.title}"`);
+                                newContent = newContent.replace(new RegExp(`(<a[^>]*href="object:${id}"[^>]*>)([^<]*)(</a>)`, 'g'), `$1${newTitle}$3`);
+                                contentModified = true;
+                            }
+
+                            // Update Hashtags: <span ... data-hashtag-id="ID" data-hashtag-label="OLD LABEL" ...>#OLD LABEL</span>
+                            // Need to update both the data-hashtag-label attribute AND the text content
+                            if (obj.content.includes(`data-hashtag-id="${id}"`)) {
+                                console.log(`[RenamePropagation] Updating hashtag in "${obj.title}"`);
+                                // Update the label attribute
+                                newContent = newContent.replace(
+                                    new RegExp(`(data-hashtag-id="${id}"[^>]*data-hashtag-label=")([^"]*)(")`, 'g'),
+                                    `$1${newTitle}$3`
+                                );
+                                // Also handle reverse order (label before id)
+                                newContent = newContent.replace(
+                                    new RegExp(`(data-hashtag-label=")([^"]*)("[^>]*data-hashtag-id="${id}")`, 'g'),
+                                    `$1${newTitle}$3`
+                                );
+                                // Update the text content (#label)
+                                newContent = newContent.replace(
+                                    new RegExp(`(<span[^>]*data-hashtag-id="${id}"[^>]*>)(#[^<]*)(</span>)`, 'g'),
+                                    `$1#${newTitle}$3`
+                                );
+                                contentModified = true;
+                            }
+
+                            if (contentModified && newContent !== obj.content) {
+                                objUpdates.content = newContent;
+                                hasChanges = true;
+                            }
+                        }
+
+                        if (hasChanges) {
+                            // Add to batch
+                            const objRef = doc(getFirestoreDb(), 'objects', obj.id);
+                            batch.update(objRef, {
+                                ...objUpdates,
+                                updatedAt: Timestamp.fromDate(new Date())
+                            });
+                            batchCount++;
+
+                            // Track for local update
+                            updatedObjects.push({
+                                ...obj,
+                                ...objUpdates,
+                                updatedAt: new Date()
+                            });
+                        }
+                    }
+
+                    if (batchCount > 0) {
+                        console.log(`[RenamePropagation] Committing batch update for ${batchCount} objects...`);
+                        await batch.commit();
+                        console.log(`[RenamePropagation] Batch commit successful.`);
+
+                        // Optimistic update of ALL affected objects in store
+                        set((state) => ({
+                            objects: state.objects.map(o => {
+                                const updated = updatedObjects.find(uo => uo.id === o.id);
+                                return updated || o;
+                            })
+                        }));
+                    } else {
+                        console.log(`[RenamePropagation] No references found to update.`);
+                    }
+                }
+
                 // Handle two-way linked properties sync
                 if (updates.properties) {
                     const objectType = get().objectTypes.find(t => t.id === currentObject.type);
@@ -238,7 +572,9 @@ export const useObjectStore = create<ObjectStore>()(
                                         const linkedPropValue = (linkedObj.properties[prop.linkedPropertyId] as { id: string; title: string }[]) || [];
                                         const alreadyLinked = linkedPropValue.some(r => r.id === id);
                                         if (!alreadyLinked) {
-                                            const updatedLinkedProp = [...linkedPropValue, { id, title: currentObject.title }];
+                                            // Use current title (or new title if just renamed)
+                                            const titleToUse = updates.title || currentObject.title;
+                                            const updatedLinkedProp = [...linkedPropValue, { id, title: titleToUse }];
                                             // Update directly in DB to avoid recursive updates
                                             await db.updateObject(linkedId, {
                                                 properties: {
@@ -301,6 +637,14 @@ export const useObjectStore = create<ObjectStore>()(
                 }
 
                 await db.updateObject(id, updates);
+
+                // TRIGGER SHADOW CHUNKING (Client-side simulation)
+                // Check if content or title changed to avoid unnecessary processing
+                if (currentObject && (updates.content !== undefined || updates.title !== undefined)) {
+                    const newTitle = updates.title || currentObject.title;
+                    const newContent = updates.content !== undefined ? updates.content : currentObject.content;
+                    generateSearchChunks(id, newTitle, newContent || '').catch(console.error);
+                }
 
                 set((state) => ({
                     objects: state.objects.map(o =>

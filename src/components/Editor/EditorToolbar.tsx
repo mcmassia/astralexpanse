@@ -56,7 +56,7 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
         } else {
             // Apply link to selection or extend existing link
             editor.chain().focus()
-                .extendMarkRange('link')
+                .extendMarkRange('objectLink')
                 .setLink({ href: finalUrl })
                 .run();
         }
@@ -64,7 +64,7 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
     };
 
     const handleLinkRemove = () => {
-        editor.chain().focus().extendMarkRange('link').unsetLink().run();
+        editor.chain().focus().extendMarkRange('objectLink').unsetLink().run();
         setIsLinkModalOpen(false);
     };
 
@@ -164,7 +164,7 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
         }
     };
 
-    const currentLinkUrl = editor.getAttributes('link').href || '';
+    const currentLinkUrl = editor.getAttributes('objectLink').href || '';
     const hasSelection = !editor.state.selection.empty;
 
     return (
@@ -318,7 +318,7 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                     <button
                         type="button"
                         onClick={openLinkModal}
-                        className={editor.isActive('link') ? 'is-active' : ''}
+                        className={editor.isActive('objectLink') ? 'is-active' : ''}
                         title="Insertar enlace (⌘K)"
                     >
                         🔗

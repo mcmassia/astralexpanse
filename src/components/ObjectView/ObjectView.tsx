@@ -222,39 +222,78 @@ export const ObjectView = () => {
     return (
         <div className="object-view" onClick={handleMentionClick}>
             <header className="object-header">
-                <div className="object-type-selector" ref={typeSelectorRef}>
-                    <div
-                        className="object-type-badge clickable"
-                        style={{ '--type-color': objectType?.color } as React.CSSProperties}
-                        onClick={() => setIsTypeSelectorOpen(!isTypeSelectorOpen)}
-                        title="Cambiar tipo de objeto"
-                    >
-                        <span className="type-name">{objectType?.name.toUpperCase()}</span>
-                        <span className="type-chevron">▼</span>
+                <div className="object-header-top">
+                    <div className="object-type-selector" ref={typeSelectorRef}>
+                        <div
+                            className="object-type-badge clickable"
+                            style={{ '--type-color': objectType?.color } as React.CSSProperties}
+                            onClick={() => setIsTypeSelectorOpen(!isTypeSelectorOpen)}
+                            title="Cambiar tipo de objeto"
+                        >
+                            <span className="type-name">{objectType?.name.toUpperCase()}</span>
+                            <span className="type-chevron">▼</span>
+                        </div>
+
+                        {isTypeSelectorOpen && (
+                            <div className="type-dropdown">
+                                <div className="type-dropdown-header">Cambiar tipo a...</div>
+                                <div className="type-dropdown-list">
+                                    {objectTypes.map(type => (
+                                        <button
+                                            key={type.id}
+                                            className={`type-option ${type.id === objectType?.id ? 'active' : ''}`}
+                                            onClick={() => {
+                                                updateObject(selectedObject.id, { type: type.id });
+                                                setIsTypeSelectorOpen(false);
+                                                toast.success('Tipo actualizado', `El objeto ahora es de tipo "${type.name}"`);
+                                            }}
+                                        >
+                                            <LucideIcon name={type.icon} size={14} color={type.color} />
+                                            <span>{type.name}</span>
+                                            {type.id === objectType?.id && <span className="check-icon">✓</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {isTypeSelectorOpen && (
-                        <div className="type-dropdown">
-                            <div className="type-dropdown-header">Cambiar tipo a...</div>
-                            <div className="type-dropdown-list">
-                                {objectTypes.map(type => (
-                                    <button
-                                        key={type.id}
-                                        className={`type-option ${type.id === objectType?.id ? 'active' : ''}`}
-                                        onClick={() => {
-                                            updateObject(selectedObject.id, { type: type.id });
-                                            setIsTypeSelectorOpen(false);
-                                            toast.success('Tipo actualizado', `El objeto ahora es de tipo "${type.name}"`);
-                                        }}
-                                    >
-                                        <LucideIcon name={type.icon} size={14} color={type.color} />
-                                        <span>{type.name}</span>
-                                        {type.id === objectType?.id && <span className="check-icon">✓</span>}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <div className="object-actions">
+                        <button
+                            className="action-btn nav"
+                            onClick={goBack}
+                            disabled={!canGoBack}
+                            title="Atrás"
+                        >
+                            ←
+                        </button>
+                        <button
+                            className="action-btn nav"
+                            onClick={goForward}
+                            disabled={!canGoForward}
+                            title="Adelante"
+                        >
+                            →
+                        </button>
+                        <button
+                            className={`action-btn focus ${focusMode ? 'active' : ''}`}
+                            onClick={toggleFocusMode}
+                            title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco (⌘.)'}
+                        >
+                            {focusMode ? '◉' : '○'}
+                        </button>
+                        <button
+                            className="action-btn ai-extract"
+                            onClick={() => setShowEntityExtractor(true)}
+                            title="Extraer entidades (IA)"
+                            style={{ color: 'var(--accent-primary)', opacity: 1 }}
+                        >
+                            <BrainCircuit size={20} />
+                        </button>
+                        <button className="action-btn delete" onClick={handleDelete} title="Eliminar">
+                            🗑️
+                        </button>
+                    </div>
                 </div>
 
                 {isEditingTitle ? (
@@ -284,43 +323,6 @@ export const ObjectView = () => {
                     {selectedObject.driveFileId && (
                         <span className="meta-item synced">☁ Sincronizado</span>
                     )}
-                </div>
-
-                <div className="object-actions">
-                    <button
-                        className="action-btn nav"
-                        onClick={goBack}
-                        disabled={!canGoBack}
-                        title="Atrás"
-                    >
-                        ←
-                    </button>
-                    <button
-                        className="action-btn nav"
-                        onClick={goForward}
-                        disabled={!canGoForward}
-                        title="Adelante"
-                    >
-                        →
-                    </button>
-                    <button
-                        className={`action-btn focus ${focusMode ? 'active' : ''}`}
-                        onClick={toggleFocusMode}
-                        title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco (⌘.)'}
-                    >
-                        {focusMode ? '◉' : '○'}
-                    </button>
-                    <button
-                        className="action-btn ai-extract"
-                        onClick={() => setShowEntityExtractor(true)}
-                        title="Extraer entidades (IA)"
-                        style={{ color: 'var(--accent-primary)', opacity: 1 }}
-                    >
-                        <BrainCircuit size={20} />
-                    </button>
-                    <button className="action-btn delete" onClick={handleDelete} title="Eliminar">
-                        🗑️
-                    </button>
                 </div>
             </header>
 

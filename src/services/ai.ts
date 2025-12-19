@@ -79,12 +79,26 @@ class AIService {
             `"${t.name}" (plural: "${t.namePlural}")`
         ).join(', ');
 
+        // Collect unique tags from all objects for better recognition
+        const allObjects = useObjectStore.getState().objects;
+        const allTags = new Set<string>();
+        allObjects.forEach(obj => {
+            (obj.tags || []).forEach((t: string) => allTags.add(t));
+            // Also extract hashtags from content
+            const contentTags = obj.content.match(/#[\w\-áéíóúñü]+/gi) || [];
+            contentTags.forEach((t: string) => allTags.add(t));
+        });
+        const knownTags = Array.from(allTags).slice(0, 50).join(', ') || '(none)';
+
         const prompt = `
         You are a Search Router for a Personal Knowledge Management (PKM) system.
         Analyze the user's query and extract filters and search intent.
         
         AVAILABLE OBJECT TYPES (use EXACTLY these names):
         ${typeList}
+
+        KNOWN RELATIONS / OBJECTS (use these for "tags" filter):
+        ${knownTags}
         
         USER QUERY: "${query}"
         
@@ -94,11 +108,19 @@ class AIService {
         - If the user says "tareas", return "Tareas". If they say "proyecto", return "Proyecto".
         - If no type matches, set type to null.
         
+        CRITICAL RULES FOR TAG/RELATION FILTER:
+        - The "tags" field is used for ANY object reference (not just strict tags).
+        - If the user mentions "Project Alpha", and it is in KNOWN RELATIONS, return "Project Alpha" in the "tags" array.
+        - Find the BEST MATCHING title from KNOWN RELATIONS.
+        - If the user mentions "realizado en local", find the EXACT match like "Realizado En Local" and return that.
+        - Include the FULL title, not partial matches.
+        - Return an empty array if no specific object references are detected.
+        
         Return JSON ONLY:
         {
           "filters": {
             "type": "string (EXACT name or plural name from AVAILABLE OBJECT TYPES, or null)",
-            "tags": ["string array"],
+            "tags": ["string array - EXACT matches from KNOWN TAGS"],
             "dateRange": "enum: 'last_7_days', 'last_30_days', 'future' or null"
           },
           "searchQuery": "string (optimized keywords for vector search, removing stop words)",

@@ -41,6 +41,14 @@
     border-bottom: 1px solid var(--border-subtle);
 }
 
+.object-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+
 .object-type-badge {
     background: var(--type-color, var(--accent-primary));
     color: white;
@@ -48,7 +56,7 @@
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     position: relative;
     user-select: none;
 }
@@ -183,9 +191,6 @@
 }
 
 .object-actions {
-    position: absolute;
-    top: 1.5rem;
-    right: 2rem;
     display: flex;
     gap: 0.5rem;
 }

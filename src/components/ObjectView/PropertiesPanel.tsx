@@ -413,7 +413,7 @@ const PropertyInput = ({ definition, value, currentObject, currentObjectType, on
                                             }
                                         }}
                                     >
-                                        {rel.title}
+                                        {relObj?.title || rel.title}
                                     </span>
                                 );
                             })}

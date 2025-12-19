@@ -15,7 +15,7 @@ import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
-import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading, ObjectLink } from './extensions';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading, ObjectLink, CodeBlockPasteHandler } from './extensions';
 import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
@@ -282,6 +282,8 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             CodeBlockLowlight.configure({
                 lowlight,
             }),
+            // Custom paste handler for code blocks - fixes multi-line paste issue
+            CodeBlockPasteHandler,
             Underline,
             Typography,
             HorizontalRule,
@@ -316,7 +318,9 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 },
             }),
             // Hashtag extensions (#tag)
-            HashtagNode,
+            HashtagNode.configure({
+                getObjects: () => objects,
+            }),
             HashtagExtension.configure({
                 onHashtag: async (tagName: string) => {
                     // Find existing tag by name (case-insensitive)
@@ -569,10 +573,10 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                             'data-type': 'mention',
                             class: 'mention',
                             'data-mention-id': node.attrs.id,
-                            'data-mention-label': node.attrs.label || obj?.title || 'Unknown',
+                            'data-mention-label': obj?.title || node.attrs.label || 'Unknown',
                             style: `--mention-color: ${type?.color || '#6366f1'}`,
                         },
-                        node.attrs.label || obj?.title || 'Unknown',
+                        obj?.title || node.attrs.label || 'Unknown',
                     ];
                 },
             }),

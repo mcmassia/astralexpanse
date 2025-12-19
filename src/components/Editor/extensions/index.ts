@@ -7,3 +7,4 @@ export { ImageExtension } from './ImageExtension';
 export { AttachmentBlock } from './AttachmentBlock';
 export { CollapsibleHeading } from './CollapsibleHeading';
 export { ObjectLink } from './ObjectLink';
+export { CodeBlockPasteHandler } from './CodeBlockPasteHandler';

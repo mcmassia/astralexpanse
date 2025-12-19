@@ -3,6 +3,7 @@ import { Node, mergeAttributes } from '@tiptap/core';
 
 export interface HashtagNodeOptions {
     HTMLAttributes: Record<string, unknown>;
+    getObjects?: () => Array<{ id: string; title: string; type: string }>;
 }
 
 declare module '@tiptap/core' {
@@ -24,6 +25,7 @@ export const HashtagNode = Node.create<HashtagNodeOptions>({
     addOptions() {
         return {
             HTMLAttributes: {},
+            getObjects: undefined,
         };
     },
 
@@ -63,6 +65,16 @@ export const HashtagNode = Node.create<HashtagNodeOptions>({
     },
 
     renderHTML({ node, HTMLAttributes }) {
+        // Resolve live title from objects if available
+        let displayLabel = node.attrs.label;
+        if (this.options.getObjects && node.attrs.id) {
+            const objects = this.options.getObjects();
+            const obj = objects.find(o => o.id === node.attrs.id);
+            if (obj) {
+                displayLabel = obj.title;
+            }
+        }
+
         return [
             'span',
             mergeAttributes(
@@ -73,7 +85,7 @@ export const HashtagNode = Node.create<HashtagNodeOptions>({
                 this.options.HTMLAttributes,
                 HTMLAttributes
             ),
-            `#${node.attrs.label}`,
+            `#${displayLabel}`,
         ];
     },
 

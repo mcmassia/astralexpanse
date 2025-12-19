@@ -390,7 +390,7 @@ export const RelationAutocomplete = ({
                                     }
                                 }}
                             >
-                                {rel.title}
+                                {relObj?.title || rel.title}
                                 <button
                                     className="relation-remove"
                                     onClick={(e) => {

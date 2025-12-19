@@ -1,6 +1,7 @@
 // UI state store
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { DashboardPanelQuery } from '../types/dashboard';
 
 type SidebarTab = 'objects' | 'types' | 'search';
 type Theme = 'light' | 'dark' | 'system';
@@ -71,6 +72,10 @@ interface UIStore {
     navHistory: NavHistoryItem[];
     navHistoryIndex: number;
 
+    // Active Panel Filter (for navigating from dashboard to filtered Objects)
+    activePanelFilter: DashboardPanelQuery | null;
+    activePanelName: string | null;
+
     // Actions
     setCurrentSection: (section: AppSection) => void;
     toggleSidebar: () => void;
@@ -116,6 +121,10 @@ interface UIStore {
     pushNavHistory: (section: AppSection, objectId: string | null) => void;
     goNavBack: () => void;
     goNavForward: () => void;
+
+    // Panel Filter actions
+    applyPanelFilter: (query: DashboardPanelQuery, panelName: string) => void;
+    clearPanelFilter: () => void;
 }
 
 const defaultExtendedFilters: ExtendedSearchFilters = {
@@ -162,6 +171,10 @@ export const useUIStore = create<UIStore>()(
             // Navigation History defaults
             navHistory: [{ section: 'dashboard', objectId: null, timestamp: Date.now() }],
             navHistoryIndex: 0,
+
+            // Panel Filter defaults
+            activePanelFilter: null,
+            activePanelName: null,
 
             setCurrentSection: (section) => set({ currentSection: section }),
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -322,6 +335,17 @@ export const useUIStore = create<UIStore>()(
                     currentSection: item.section,
                     navHistoryIndex: newIndex,
                 };
+            }),
+
+            // Panel Filter actions
+            applyPanelFilter: (query, panelName) => set({
+                activePanelFilter: query,
+                activePanelName: panelName,
+                currentSection: 'objects',
+            }),
+            clearPanelFilter: () => set({
+                activePanelFilter: null,
+                activePanelName: null,
             }),
         }),
         {

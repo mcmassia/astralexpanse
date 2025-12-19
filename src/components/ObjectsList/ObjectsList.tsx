@@ -1,6 +1,8 @@
 // ObjectsList - Full list view of all objects with search, filter, sort, and actions
 import { useState, useMemo } from 'react';
 import { useObjectStore, useSelectedObject } from '../../stores/objectStore';
+import { useUIStore } from '../../stores/uiStore';
+import { useDashboardStore } from '../../stores/dashboardStore';
 import { TypeEditorModal } from '../TypeEditor';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import type { AstralObject, ObjectType } from '../../types/object';
@@ -21,6 +23,12 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
     const selectedObject = useSelectedObject();
     const toast = useToast();
 
+    // Panel filter from dashboard
+    const activePanelFilter = useUIStore(s => s.activePanelFilter);
+    const activePanelName = useUIStore(s => s.activePanelName);
+    const clearPanelFilter = useUIStore(s => s.clearPanelFilter);
+    const executeQuery = useDashboardStore(s => s.executeQuery);
+
     // Filter & Sort state
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
@@ -40,6 +48,11 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
     // Filter and sort objects
     const filteredObjects = useMemo(() => {
         let result = [...objects];
+
+        // Apply panel filter if active
+        if (activePanelFilter) {
+            result = executeQuery(activePanelFilter, objects, objectTypes);
+        }
 
         // Search filter
         if (searchQuery.trim()) {
@@ -76,7 +89,7 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
         });
 
         return result;
-    }, [objects, searchQuery, selectedTypes, sortField, sortDirection]);
+    }, [objects, searchQuery, selectedTypes, sortField, sortDirection, activePanelFilter, executeQuery, objectTypes]);
 
     const toggleTypeFilter = (typeId: string) => {
         setSelectedTypes(prev => {
@@ -93,6 +106,9 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
     const clearFilters = () => {
         setSearchQuery('');
         setSelectedTypes(new Set());
+        if (activePanelFilter) {
+            clearPanelFilter();
+        }
     };
 
     const getTypeInfo = (typeId: string): ObjectType | undefined => {
@@ -152,6 +168,21 @@ export const ObjectsList = ({ onSelectObject }: ObjectsListProps) => {
 
     return (
         <div className="objects-list">
+            {/* Panel Filter Banner */}
+            {activePanelFilter && activePanelName && (
+                <div className="objects-list-filter-banner">
+                    <LucideIcon name="Filter" size={16} />
+                    <span>Mostrando: <strong>{activePanelName}</strong></span>
+                    <button
+                        className="filter-banner-clear"
+                        onClick={clearPanelFilter}
+                    >
+                        <LucideIcon name="X" size={14} />
+                        Limpiar filtro
+                    </button>
+                </div>
+            )}
+
             {/* Toolbar */}
             <div className="objects-list-toolbar">
                 {/* Search */}

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import type { ObjectType, PropertyDefinition, PropertyType } from '../../types/object';
 import { useObjectStore } from '../../stores/objectStore';
-import { useToast, IconPicker, LucideIcon } from '../common';
+import { useToast, IconPicker, LucideIcon, ConfirmDialog } from '../common';
 import './TypeEditorModal.css';
 
 interface TypeEditorModalProps {
@@ -53,6 +53,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
     // UI State
     const [activeTab, setActiveTab] = useState<'properties' | 'template'>('properties');
     const [activePopover, setActivePopover] = useState<string | null>(null);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
     // Initialize form when editing
     useEffect(() => {
@@ -171,7 +172,7 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
         }
     };
 
-    const handleDeleteType = async () => {
+    const handleDeleteType = () => {
         if (!editingType) return;
 
         // Double check usage
@@ -181,18 +182,22 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
             return;
         }
 
-        if (!window.confirm(`¿Estás seguro de que quieres eliminar el tipo "${editingType.name}"? Esta acción no se puede deshacer.`)) {
-            return;
-        }
+        setIsDeleteConfirmOpen(true);
+    };
+
+    const confirmDeleteType = async () => {
+        if (!editingType) return;
 
         setIsSaving(true);
         try {
             await deleteObjectType(editingType.id);
             toast.success('Tipo eliminado', `"${editingType.name}" ha sido eliminado correctamente.`);
+            setIsDeleteConfirmOpen(false);
             onClose();
         } catch (err) {
             setError((err as Error).message);
             toast.error('Error', (err as Error).message);
+            setIsDeleteConfirmOpen(false);
         } finally {
             setIsSaving(false);
         }
@@ -599,6 +604,18 @@ export const TypeEditorModal = ({ isOpen, onClose, editingType }: TypeEditorModa
                     </button>
                 </footer>
             </div >
+
+
+            <ConfirmDialog
+                isOpen={isDeleteConfirmOpen}
+                title="Eliminar tipo de objeto"
+                message={`¿Estás seguro de que quieres eliminar el tipo "${editingType?.name}"? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                variant="danger"
+                onConfirm={confirmDeleteType}
+                onCancel={() => setIsDeleteConfirmOpen(false)}
+                isLoading={isSaving}
+            />
         </div >
     );
 };

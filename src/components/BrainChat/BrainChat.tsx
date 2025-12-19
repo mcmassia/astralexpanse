@@ -8,7 +8,8 @@ import { useCalendarStore } from '../../stores/calendarStore';
 import type { ChatMessage } from '../../types/ai';
 import { useUIStore } from '../../stores/uiStore';
 import { aiService } from '../../services/ai';
-import { initializeFirebase } from '../../services/firebase';
+import { collectionGroup, getDocs, query, where, limit } from 'firebase/firestore'; // Firestore imports
+import { getFirestoreDb, initializeFirebase } from '../../services/firebase'; // Firestore instance
 import { marked } from 'marked';
 import { useToast } from '../common';
 import './BrainChat.css';
@@ -185,6 +186,60 @@ export const BrainChat = () => {
             try {
                 analysis = await aiService.analyzeQuery(userMsg.content);
                 console.log('[BrainChat] Router Analysis:', analysis);
+
+                // POST-PROCESS: Fuzzy match router tags against actual object titles
+                // The router may return incorrect tags; correct them here
+                if (analysis.filters.tags && analysis.filters.tags.length > 0) {
+                    const correctedTags: string[] = [];
+
+                    for (const routerTag of analysis.filters.tags) {
+                        const normalizedRouterTag = routerTag.toLowerCase();
+
+                        // Also check the original query for the full tag mention
+                        const queryLower = userMsg.content.toLowerCase();
+
+                        // Find best matching object title
+                        const bestMatch = objects.find(obj => {
+                            const titleLower = obj.title.toLowerCase();
+                            // Check if object title matches router tag or appears in query
+                            return titleLower === normalizedRouterTag ||
+                                titleLower.includes(normalizedRouterTag) ||
+                                normalizedRouterTag.includes(titleLower) ||
+                                queryLower.includes(titleLower);
+                        });
+
+                        if (bestMatch) {
+                            correctedTags.push(bestMatch.title);
+                            console.log(`[BrainChat] Tag corrected: "${routerTag}" → "${bestMatch.title}"`);
+                        } else {
+                            correctedTags.push(routerTag); // Keep original if no match
+                        }
+                    }
+
+                    analysis.filters.tags = correctedTags;
+                    console.log('[BrainChat] Corrected Tags:', correctedTags);
+                } else {
+                    // FALLBACK: Router returned no tags, but query/searchQuery may contain tag names
+                    // Scan for object titles that appear in the query or searchQuery
+                    const queryLower = userMsg.content.toLowerCase();
+                    const searchLower = analysis.searchQuery.toLowerCase();
+
+                    const foundTags: string[] = [];
+                    for (const obj of objects) {
+                        const titleLower = obj.title.toLowerCase();
+                        // Check if title has at least 3 words to avoid false positives
+                        const wordCount = titleLower.split(/\s+/).length;
+                        if (wordCount >= 2 && (queryLower.includes(titleLower) || searchLower.includes(titleLower))) {
+                            foundTags.push(obj.title);
+                            console.log(`[BrainChat] Tag extracted from query: "${obj.title}"`);
+                        }
+                    }
+
+                    if (foundTags.length > 0) {
+                        analysis.filters.tags = foundTags;
+                        console.log('[BrainChat] Extracted Tags:', foundTags);
+                    }
+                }
             } catch (e) {
                 console.warn('[BrainChat] Router failed, using defaults');
                 analysis = { filters: {}, searchQuery: userMsg.content, intent: 'search' };
@@ -222,6 +277,34 @@ export const BrainChat = () => {
                     if (analysis.filters.dateRange === 'last_30_days' && diffDays > 30) return false;
                 }
 
+                // Tag Filter - Check tags array, hashtags in content, AND inline ObjectLink references
+                if (analysis.filters.tags && analysis.filters.tags.length > 0) {
+                    const filterTags = analysis.filters.tags.map((t: string) => t.toLowerCase().replace(/^#/, ''));
+                    const objTags = (obj.tags || []).map((t: string) => t.toLowerCase().replace(/^#/, ''));
+
+                    // Extract hashtags from content (e.g., #Realizado)
+                    const contentHashtags = (obj.content.match(/#[\w\-áéíóúñü]+/gi) || [])
+                        .map((t: string) => t.toLowerCase().replace(/^#/, ''));
+
+                    // Extract inline ObjectLink references (href="object:ID")
+                    const objectLinkMatches = [...obj.content.matchAll(/href="object:([^"]+)"/gi)];
+                    const linkedObjectIds = objectLinkMatches.map(m => m[1]);
+
+                    // Get titles of ALL linked objects (to match tag names regardless of object type)
+                    const linkedObjectTitles = linkedObjectIds
+                        .map(id => objects.find(o => o.id === id))
+                        .filter(o => o != null)
+                        .map(o => o!.title.toLowerCase());
+
+                    const allTags = [...objTags, ...contentHashtags, ...linkedObjectTitles];
+
+                    // Check if any filter tag matches
+                    const hasMatch = filterTags.some((ft: string) =>
+                        allTags.some((at: string) => at.includes(ft) || ft.includes(at))
+                    );
+                    if (!hasMatch) return false;
+                }
+
                 return true;
             });
 
@@ -230,8 +313,9 @@ export const BrainChat = () => {
                 filteredObjects = objects;
             }
 
-            // 3. CHECK CONTEXT CACHE
-            const cachedObjectIds = getContextFromCache(analysis.searchQuery);
+            // 3. CHECK CONTEXT CACHE (skip if tags filter is present since they may have been corrected)
+            const hasTags = analysis.filters.tags && analysis.filters.tags.length > 0;
+            const cachedObjectIds = hasTags ? null : getContextFromCache(analysis.searchQuery);
             let scoredCandidates: { obj: any; score: number; reason: string }[] = [];
 
             if (cachedObjectIds && cachedObjectIds.length > 0) {
@@ -247,37 +331,91 @@ export const BrainChat = () => {
                 console.log('[BrainChat] Cache MISS. Performing full RAG.');
 
                 try {
-                    let embeddingQuery = analysis.searchQuery;
-                    // Add short-term history context
-                    const recentMsgs = chatHistory.slice(-2).filter(m => m.role === 'user');
-                    if (recentMsgs.length > 0 && embeddingQuery.length < 20) {
-                        embeddingQuery = recentMsgs.map(m => m.content).join(' ') + ' ' + embeddingQuery;
+                    // NEW: SHADOW CHUNK RETRIEVAL STRATEGY
+                    // If we have specific tags or distinct keywords, query the granular chunks first
+                    let chunkCandidates: any[] = [];
+
+                    if (hasTags) {
+                        const firestore = getFirestoreDb();
+                        // Normalize tags for query (must match objectStore cleaning)
+                        const rawTags = analysis.filters.tags || [];
+                        const tagsFilter = rawTags.map(t =>
+                            t.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim()
+                        );
+
+                        console.log('[BrainChat] Querying Shadow Chunks for tags (normalized):', tagsFilter);
+                        console.log('[BrainChat] Using collectionGroup: search_chunks');
+
+                        // DEBUG: Log first few chunks blindly to see what they contain
+                        // This helps debugging if the array-contains-any is failing due to formatting
+                        getDocs(query(collectionGroup(firestore, 'search_chunks'), limit(5))).then(snap => {
+                            snap.docs.forEach(d => console.log('[BrainChat-DEBUG] Chunk Sample:', d.data()));
+                        });
+
+                        const chunksQuery = query(
+                            collectionGroup(firestore, 'search_chunks'),
+                            where('tagsInBlock', 'array-contains-any', tagsFilter),
+                            limit(20)
+                        );
+
+                        const chunkSnapshots = await getDocs(chunksQuery);
+                        console.log(`[BrainChat] Found ${chunkSnapshots.size} matching chunks.`);
+
+                        chunkCandidates = chunkSnapshots.docs.map(doc => {
+                            const data = doc.data();
+                            const parentObj = objects.find(o => o.id === data.parentId);
+                            if (!parentObj) return null;
+
+                            return {
+                                obj: parentObj,
+                                score: 0.95, // High score for direct tag match in chunk
+                                reason: `chunk_tag_match: ${data.tagsInBlock.join(', ')}`,
+                                focusedContent: data.content // Use the chunk content as the primary context
+                            };
+                        }).filter(Boolean);
                     }
 
-                    const queryEmbedding = await aiService.getEmbeddings(embeddingQuery);
+                    // Merge chunk candidates with standard vector search (if needed or if chunks found nothing)
+                    if (chunkCandidates.length > 0) {
+                        scoredCandidates = chunkCandidates;
+                    } else {
+                        // Fallback to standard client-side search if no chunks found or no tags
+                        let embeddingQuery = analysis.searchQuery;
+                        // Add short-term history context
+                        const recentMsgs = chatHistory.slice(-2).filter(m => m.role === 'user');
+                        if (recentMsgs.length > 0) {
+                            embeddingQuery += " " + recentMsgs.map(m => m.content).join(" ");
+                        }
 
-                    scoredCandidates = filteredObjects
-                        .map(obj => {
-                            let score = obj.embedding ? cosineSimilarity(queryEmbedding, obj.embedding) : 0;
+                        const embeddedQuery = await aiService.getEmbeddings(embeddingQuery);
 
-                            // Recency Boost
-                            const daysOld = (Date.now() - new Date(obj.updatedAt).getTime()) / (1000 * 3600 * 24);
-                            if (daysOld < 1) score += 0.15;
-                            else if (daysOld < 7) score += 0.08;
-                            else if (daysOld < 30) score += 0.04;
+                        scoredCandidates = filteredObjects
+                            .map(obj => {
+                                // ... existing scoring logic
+                                if (!obj.embedding) return { obj, score: 0, reason: 'no_embedding' };
+                                const similarity = cosineSimilarity(embeddedQuery, obj.embedding);
+                                let score = similarity;
 
-                            // Title Keyword Boost
-                            if (embeddingQuery.toLowerCase().includes(obj.title.toLowerCase())) {
-                                score += 0.3;
-                            }
+                                // Recency Boost
+                                const created = new Date(obj.createdAt).getTime();
+                                const now = Date.now();
+                                const daysOld = (now - created) / (1000 * 60 * 60 * 24);
+                                if (daysOld < 1) score += 0.15;
+                                else if (daysOld < 7) score += 0.08;
+                                else if (daysOld < 30) score += 0.04;
 
-                            return { obj, score, reason: 'semantic' };
-                        })
-                        .sort((a, b) => b.score - a.score)
-                        .slice(0, 15);
+                                // Title Keyword Boost
+                                if (embeddingQuery.toLowerCase().includes(obj.title.toLowerCase())) {
+                                    score += 0.3;
+                                }
 
+                                return { obj, score, reason: 'semantic' };
+                            })
+                            .sort((a, b) => b.score - a.score)
+                            .slice(0, 15);
+                    }
                 } catch (e) {
-                    console.warn('Vector search failed:', e);
+                    console.warn('Search failed:', e);
                 }
             } // End of cache miss block
 
@@ -312,11 +450,28 @@ export const BrainChat = () => {
                 }
             });
 
-            // 5. MERGE & DEDUPLICATE
+            // 5. MERGE & DEDUPLICATE with Focused Content handling
             const allCandidates = [...scoredCandidates, ...graphCandidates];
             const uniqueMap = new Map();
             allCandidates.forEach(c => {
-                if (!uniqueMap.has(c.obj.id)) uniqueMap.set(c.obj.id, c);
+                if (!uniqueMap.has(c.obj.id)) {
+                    uniqueMap.set(c.obj.id, { ...c }); // Clone to avoid side effects
+                } else {
+                    // If we have multiple chunks for the same object, MERGE them.
+                    const existing = uniqueMap.get(c.obj.id);
+                    const newFocused = (c as any).focusedContent;
+
+                    if (newFocused) {
+                        if ((existing as any).focusedContent) {
+                            // Append the new chunk to existing content
+                            (existing as any).focusedContent += `\n\n[...]\n\n` + newFocused;
+                        } else {
+                            // Upgrade existing object to use this focused content
+                            (existing as any).focusedContent = newFocused;
+                            existing.score = Math.max(existing.score, c.score);
+                        }
+                    }
+                }
             });
 
             const finalContextObjects = Array.from(uniqueMap.values())
@@ -371,12 +526,65 @@ CRITICAL OUTPUT FORMATTING:
                     const isFocus = c.score >= 3.0;
                     const charLimit = isFocus ? 8000 : 3000;
 
-                    let cleanContent = c.obj.content.replace(/<[^>]*>/g, ' ').trim();
+                    // Use focused content from chunk if available (Shadow Chunking), otherwise use full content
+                    let contentToUse = (c as any).focusedContent || c.obj.content;
+
+                    let cleanContent = contentToUse.replace(/<[^>]*>/g, ' ').trim();
                     if (!cleanContent) cleanContent = '(No text content - use Title/Properties to infer context)';
 
                     const props = c.obj.properties && Object.keys(c.obj.properties).length > 0
                         ? JSON.stringify(c.obj.properties)
                         : '(No custom properties)';
+
+                    // Extract hashtags from content for visibility (used in effective tags)
+                    // (c.obj.content.match(/#[\w\-áéíóúñü]+/gi) || [])
+
+                    // Old linkedTitles logic removed in favor of unified logic below
+
+                    // Extract inline ObjectLink references from content (e.g., TAG pills)
+                    const inlineRefMatches = [...c.obj.content.matchAll(/href="object:([^"]+)"/gi)];
+                    const inlineRefs = inlineRefMatches
+                        .map(m => {
+                            const refObj = objects.find(o => o.id === m[1]);
+                            return refObj ? refObj.title : null;
+                        })
+                        .filter((v: string | null) => v != null) as string[];
+
+                    const uniqueInlineRefs = [...new Set(inlineRefs)];
+                    // inlineRefsString removed (unused)
+
+                    // UNIFY ALL TAG SOURCES INTO A SINGLE "TAGS" FIELD TO FORCE AI COMPLIANCE
+
+                    const rawTags = (c.obj.tags || []);
+                    const extractedHashtags = (c.obj.content.match(/#[\w\-áéíóúñü]+/gi) || [])
+                        .map((t: string) => t.replace('#', '')); // Remove # for cleaner list
+
+                    // Extract relations from Shadow Chunk text if present
+                    // This is CRITICAL for "Realizado En Local" etc.
+                    const chunkRelationsMatch = contentToUse.match(/^\[RELATIONS: (.*?)\]/);
+                    let chunkRelations: string[] = [];
+                    if (chunkRelationsMatch && chunkRelationsMatch[1]) {
+                        chunkRelations = chunkRelationsMatch[1].split(',').map((t: string) => t.trim());
+                    }
+
+                    const allEffectiveTags = [
+                        ...rawTags,
+                        ...extractedHashtags,
+                        ...uniqueInlineRefs,
+                        ...chunkRelations
+                    ];
+                    // Deduplicate and join
+                    const effectiveTagsString = [...new Set(allEffectiveTags)].join(', ') || '(None)';
+
+                    // Inject relations into LINKED_TO to trick AI into seeing them as connections
+                    const effectiveLinks = [
+                        ...((c.obj.links || []).map((id: string) => {
+                            const linked = objects.find(o => o.id === id);
+                            return linked ? `"${linked.title}"` : id;
+                        })),
+                        ...chunkRelations.map(r => `"${r}"`)
+                    ];
+                    const linkedTitles = [...new Set(effectiveLinks)].join(', ') || '(No outgoing links)';
 
                     return `
 [OBJECT]
@@ -384,8 +592,8 @@ ID: ${c.obj.id}
 TYPE: ${c.obj.type.toUpperCase()}
 TITLE: ${c.obj.title}
 PROPERTIES: ${props}
-TAGS: ${c.obj.tags.join(', ') || '(No tags)'}
-LINKED_TO: ${(c.obj.links || []).join(', ') || '(No outgoing links)'}
+TAGS: ${effectiveTagsString}
+LINKED_TO: ${linkedTitles}
 CONTENT:
 ${cleanContent.slice(0, charLimit)}
 [/OBJECT]

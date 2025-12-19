@@ -1,0 +1,561 @@
+/* DashboardConfigModal Styles */
+.dashboard-config-modal {
+    background: var(--bg-primary);
+    border-radius: 16px;
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-xl);
+    width: 700px;
+    max-width: 95%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header */
+.dashboard-config-modal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+
+.dashboard-config-modal .header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dashboard-config-modal .header-title-row h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.back-button:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.panel-preview-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.danger-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.danger-button:hover {
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.dashboard-config-modal .modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.dashboard-config-modal .modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Body */
+.dashboard-config-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* Panels List View */
+.panels-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.new-panel-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.new-panel-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.panels-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.section-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+.empty-section {
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.panels-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.panel-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.panel-card:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+}
+
+.panel-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.panel-card-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.panel-card-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-card-mode {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+}
+
+.panel-card-arrow {
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+/* Panel Edit View */
+.panel-edit-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.field-group.flex-1 {
+    flex: 1;
+    min-width: 200px;
+}
+
+.field-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.text-input,
+.select-input,
+.number-input {
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    transition: border-color 0.15s ease;
+}
+
+.text-input:focus,
+.select-input:focus,
+.number-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.number-input {
+    width: 80px;
+}
+
+.color-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.color-input-small {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.color-presets {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.color-preset {
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.color-preset:hover {
+    transform: scale(1.15);
+}
+
+.color-preset.selected {
+    border-color: white;
+    box-shadow: 0 0 0 1px var(--border-default);
+}
+
+/* Chart Type Grid */
+.chart-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.chart-type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.75rem 0.5rem;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.chart-type-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-default);
+}
+
+.chart-type-btn.active {
+    background: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Filter Groups */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+}
+
+.type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.type-chip:hover {
+    background: color-mix(in srgb, var(--chip-color, var(--accent-primary)) 25%, transparent);
+}
+
+.type-chip.active {
+    background: var(--chip-color, var(--accent-primary));
+    color: white;
+    border-color: transparent;
+}
+
+.filter-hint {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* Property Filter Row */
+.property-filter-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.property-filter-row .property-select {
+    flex: 1.2;
+    min-width: 150px;
+}
+
+.property-filter-row .operator-select {
+    width: 120px;
+    flex-shrink: 0;
+}
+
+.property-filter-row .value-input-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.property-filter-row .value-input {
+    width: 100%;
+}
+
+.property-filter-row .text-input {
+    flex: 1;
+    min-width: 100px;
+}
+
+.remove-filter-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.remove-filter-btn:hover {
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.add-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px dashed var(--border-default);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: fit-content;
+}
+
+.add-filter-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Footer */
+.dashboard-config-modal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+}
+
+.btn-secondary {
+    padding: 0.625rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-secondary);
+}
+
+.btn-primary {
+    padding: 0.625rem 1.25rem;
+    background: var(--accent-primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-secondary);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
