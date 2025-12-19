@@ -20,6 +20,8 @@ import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
 import { useObjectStore } from '../../stores/objectStore';
+import { useUIStore } from '../../stores/uiStore';
+
 import { EditorToolbar } from './EditorToolbar';
 import {
     parsePropertyAssignments,
@@ -609,6 +611,120 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
             }
         }
     }, [content, editor]);
+
+    // Scroll to and highlight text from backlink context click
+    const { highlightSearchText, setHighlightSearchText } = useUIStore();
+
+    useEffect(() => {
+        if (!editor || !highlightSearchText) return;
+
+        console.log('[Editor] highlightSearchText triggered:', highlightSearchText.slice(0, 50));
+
+        // Wait for the editor content to be fully loaded after navigation
+        const timeoutId = setTimeout(() => {
+            if (!editor.state || !editor.state.doc) {
+                console.log('[Editor] Editor not ready, skipping highlight');
+                setHighlightSearchText(null);
+                return;
+            }
+
+            const doc = editor.state.doc;
+            const fullSearchText = highlightSearchText.toLowerCase();
+            let foundPos = -1;
+            let foundLength = 0;
+
+            // Split into words - The first word is often a tag/mention name which is NOT plain text in TipTap
+            // So we try: all words, then skip first word, then individual words from the end
+            const allWords = fullSearchText.split(/\s+/).filter(w => w.length > 2);
+
+            // Strategy: Skip first word (likely tag name), search from word 2 onwards
+            const searchAttempts = [
+                allWords.slice(1, 5).join(' '),  // Skip first word, get next 4
+                allWords.slice(1, 3).join(' '),  // Skip first word, get next 2
+                allWords.slice(2, 4).join(' '),  // Skip first 2 words
+                allWords[1] || '',               // Second word alone
+                allWords[2] || '',               // Third word alone
+                allWords[allWords.length - 1] || '' // Last word
+            ].filter(s => s.length > 3);
+
+            console.log('[Editor] Words:', allWords);
+            console.log('[Editor] Search attempts (skipping tag):', searchAttempts);
+
+            for (const searchText of searchAttempts) {
+                if (foundPos !== -1) break;
+
+                doc.descendants((node, pos) => {
+                    if (foundPos !== -1) return false;
+
+                    if (node.isText && node.text) {
+                        const nodeText = node.text.toLowerCase();
+                        const index = nodeText.indexOf(searchText);
+
+                        if (index !== -1) {
+                            foundPos = pos + index;
+                            foundLength = searchText.length;
+                            console.log('[Editor] Found "' + searchText + '" at pos:', foundPos);
+                            return false;
+                        }
+                    }
+                });
+            }
+
+
+            if (foundPos !== -1) {
+                try {
+                    // Move cursor to the found position
+                    editor.commands.focus();
+
+                    // Set selection to highlight the found text
+                    const endPos = Math.min(foundPos + foundLength, doc.content.size);
+                    editor.commands.setTextSelection({ from: foundPos, to: endPos });
+
+                    // Use a small delay to let the selection render, then scroll to center
+                    setTimeout(() => {
+                        // Get the DOM selection and scroll the focused element to center
+                        const selection = window.getSelection();
+                        if (selection && selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            const rect = range.getBoundingClientRect();
+
+                            // Find the scrollable container
+                            const scrollContainer = editor.view.dom.closest('.editor-content');
+
+                            if (scrollContainer && rect) {
+                                const containerRect = scrollContainer.getBoundingClientRect();
+                                // Calculate how much to scroll to center the selection
+                                const selectionCenterY = rect.top + rect.height / 2;
+                                const containerCenterY = containerRect.top + containerRect.height / 2;
+                                const scrollAdjustment = selectionCenterY - containerCenterY;
+
+                                scrollContainer.scrollBy({
+                                    top: scrollAdjustment,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        }
+                    }, 50);
+
+                    console.log('[Editor] Scrolled and selected from', foundPos, 'to', endPos);
+
+
+                } catch (err) {
+                    console.warn('[Editor] Error during scroll/select:', err);
+                }
+            } else {
+                console.log('[Editor] Text not found in document');
+            }
+
+            // Clear the highlight state
+            setHighlightSearchText(null);
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [editor, highlightSearchText, setHighlightSearchText]);
+
+
+
 
 
 

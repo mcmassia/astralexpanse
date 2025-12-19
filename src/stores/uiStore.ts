@@ -76,6 +76,9 @@ interface UIStore {
     activePanelFilter: DashboardPanelQuery | null;
     activePanelName: string | null;
 
+    // Highlight text in editor when navigating from backlinks
+    highlightSearchText: string | null;
+
     // Actions
     setCurrentSection: (section: AppSection) => void;
     toggleSidebar: () => void;
@@ -125,6 +128,9 @@ interface UIStore {
     // Panel Filter actions
     applyPanelFilter: (query: DashboardPanelQuery, panelName: string) => void;
     clearPanelFilter: () => void;
+
+    // Highlight actions
+    setHighlightSearchText: (text: string | null) => void;
 }
 
 const defaultExtendedFilters: ExtendedSearchFilters = {
@@ -175,6 +181,9 @@ export const useUIStore = create<UIStore>()(
             // Panel Filter defaults
             activePanelFilter: null,
             activePanelName: null,
+
+            // Highlight defaults
+            highlightSearchText: null,
 
             setCurrentSection: (section) => set({ currentSection: section }),
             toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
@@ -347,6 +356,10 @@ export const useUIStore = create<UIStore>()(
                 activePanelFilter: null,
                 activePanelName: null,
             }),
+
+            // Highlight action
+            setHighlightSearchText: (text) => set({ highlightSearchText: text }),
+
         }),
         {
             name: 'astral-ui-store',

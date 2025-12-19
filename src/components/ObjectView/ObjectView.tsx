@@ -9,8 +9,11 @@ import { PropertiesPanel } from './PropertiesPanel';
 // import { AttachmentsPanel } from './AttachmentsPanel';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import { EntityExtractor } from '../Editor/EntityExtractor';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
+import { getFirestoreDb } from '../../services/firebase';
+import { collectionGroup, query, where, getDocs, limit } from 'firebase/firestore';
 import './ObjectView.css';
+
 
 export const ObjectView = () => {
     const selectedObject = useSelectedObject();
@@ -24,7 +27,7 @@ export const ObjectView = () => {
     const goForward = useObjectStore(s => s.goForward);
     const historyIndex = useObjectStore(s => s.historyIndex);
     const navigationHistory = useObjectStore(s => s.navigationHistory);
-    const { focusMode, toggleFocusMode } = useUIStore();
+    const { focusMode, toggleFocusMode, setHighlightSearchText } = useUIStore();
     const toast = useToast();
 
     // Reactive navigation state
@@ -61,6 +64,59 @@ export const ObjectView = () => {
             return false;
         });
     }, [objects, selectedObject]);
+
+    // Contextual Backlinks: State for context snippets and expanded toggles
+    const [backlinkContexts, setBacklinkContexts] = useState<Record<string, string[]>>({});
+    const [expandedBacklinks, setExpandedBacklinks] = useState<Set<string>>(new Set());
+
+    // Fetch context snippets from search_chunks when selectedObject changes
+    useEffect(() => {
+        if (!selectedObject) {
+            setBacklinkContexts({});
+            return;
+        }
+
+        const fetchContexts = async () => {
+            try {
+                const firestore = getFirestoreDb();
+                // Query chunks that mention this object's title
+                const chunksQuery = query(
+                    collectionGroup(firestore, 'search_chunks'),
+                    where('tagsInBlock', 'array-contains', selectedObject.title),
+                    limit(100)
+                );
+                const snap = await getDocs(chunksQuery);
+
+                const contexts: Record<string, string[]> = {};
+                snap.docs.forEach(doc => {
+                    const data = doc.data();
+                    if (!contexts[data.parentId]) contexts[data.parentId] = [];
+                    // Use originalText for clean display, fallback to content
+                    const snippet = data.originalText || data.content || '';
+                    if (snippet) contexts[data.parentId].push(snippet);
+                });
+                setBacklinkContexts(contexts);
+            } catch (err) {
+                console.warn('[ObjectView] Failed to fetch backlink contexts:', err);
+            }
+        };
+
+        fetchContexts();
+    }, [selectedObject]);
+
+    // Toggle handler for "Ver contexto"
+    const toggleBacklinkContext = (objectId: string) => {
+        setExpandedBacklinks(prev => {
+            const next = new Set(prev);
+            if (next.has(objectId)) {
+                next.delete(objectId);
+            } else {
+                next.add(objectId);
+            }
+            return next;
+        });
+    };
+
 
     const handleTitleClick = () => {
         if (selectedObject) {
@@ -364,24 +420,66 @@ export const ObjectView = () => {
                     <div className="backlinks-list">
                         {backlinkedObjects.map(obj => {
                             const type = objectTypes.find(t => t.id === obj.type);
+                            const contexts = backlinkContexts[obj.id] || [];
+                            const isExpanded = expandedBacklinks.has(obj.id);
+
                             return (
-                                <button
-                                    key={obj.id}
-                                    className="backlink-item"
-                                    onClick={() => handleBacklinkClick(obj.id)}
-                                    style={{ '--type-color': type?.color } as React.CSSProperties}
-                                >
-                                    <span className="backlink-type-badge" style={{ backgroundColor: type?.color }}>
-                                        {type?.name?.toUpperCase() || 'OBJETO'}
-                                    </span>
-                                    <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
-                                    <span className="backlink-title">{obj.title}</span>
-                                </button>
+                                <div key={obj.id} className="backlink-card">
+                                    <button
+                                        className="backlink-item"
+                                        onClick={() => handleBacklinkClick(obj.id)}
+                                        style={{ '--type-color': type?.color } as React.CSSProperties}
+                                    >
+                                        <span className="backlink-type-badge" style={{ backgroundColor: type?.color }}>
+                                            {type?.name?.toUpperCase() || 'OBJETO'}
+                                        </span>
+                                        <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
+                                        <span className="backlink-title">{obj.title}</span>
+                                    </button>
+
+                                    {contexts.length > 0 && (
+                                        <button
+                                            className="context-toggle"
+                                            onClick={() => toggleBacklinkContext(obj.id)}
+                                        >
+                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                            <span>Ver contexto ({contexts.length})</span>
+                                        </button>
+                                    )}
+
+                                    {isExpanded && contexts.length > 0 && (
+                                        <div className="backlink-contexts">
+                                            {contexts.map((ctx, i) => {
+                                                // Extract clean text for search/highlight
+                                                const cleanText = ctx.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                                                const displayText = cleanText.slice(0, 300) + (cleanText.length > 300 ? '...' : '');
+
+                                                return (
+                                                    <blockquote
+                                                        key={i}
+                                                        className="context-snippet clickable"
+                                                        onClick={() => {
+                                                            // Set highlight text (first 50 chars for search)
+                                                            setHighlightSearchText(cleanText.slice(0, 50));
+                                                            // Navigate to the source object
+                                                            handleBacklinkClick(obj.id);
+                                                        }}
+                                                        title="Haz clic para ir a esta referencia"
+                                                    >
+                                                        {displayText}
+                                                    </blockquote>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                </div>
                             );
                         })}
                     </div>
                 </div>
             )}
+
 
             <ConfirmDialog
                 isOpen={showDeleteConfirm}
