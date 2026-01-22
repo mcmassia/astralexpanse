@@ -41,6 +41,50 @@
     color: var(--text-primary);
 }
 
+.pending-sync-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pending-sync-all-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    background: var(--accent-primary);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pending-sync-all-btn:hover:not(:disabled) {
+    background: var(--accent-secondary);
+}
+
+.pending-sync-all-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.pending-sync-all-btn .spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .pending-sync-panel-close {
     background: none;
     border: none;
@@ -79,7 +123,9 @@
 }
 
 .pending-sync-item-icon {
-    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 }
 
