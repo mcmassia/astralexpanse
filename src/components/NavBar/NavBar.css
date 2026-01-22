@@ -40,6 +40,16 @@
     letter-spacing: -0.01em;
 }
 
+/* Clickable logo */
+.nav-bar-logo-clickable {
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.nav-bar-logo-clickable:hover {
+    opacity: 0.75;
+}
+
 /* Navigation buttons */
 .nav-bar-nav-buttons {
     display: flex;

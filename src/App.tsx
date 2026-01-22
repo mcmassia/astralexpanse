@@ -191,7 +191,7 @@ function App() {
       <div className="login-screen">
         <div className="login-card">
           <div className="login-logo">✦</div>
-          <h1 className="login-title">Astral Expanse</h1>
+          <h1 className="login-title">OOPKM</h1>
           <p className="login-subtitle">
             Tu espacio para conectar ideas y conocimiento
           </p>

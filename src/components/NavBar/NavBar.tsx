@@ -140,9 +140,13 @@ export const NavBar = () => {
         <header className="nav-bar">
             {/* Left section: App name and navigation */}
             <div className="nav-bar-left">
-                <div className="nav-bar-logo">
+                <div
+                    className="nav-bar-logo nav-bar-logo-clickable"
+                    onClick={() => { selectObject(null); setCurrentSection('dashboard'); }}
+                    title="Ir a Inicio"
+                >
                     <span className="nav-bar-logo-icon">✦</span>
-                    <span className="nav-bar-logo-text">Astral Expanse</span>
+                    <span className="nav-bar-logo-text">OOPKM</span>
                 </div>
 
                 <div className="nav-bar-nav-buttons">
