@@ -1,16 +1,25 @@
 /* Pending Sync Panel Styles */
 
+/* Overlay for click-outside - renders in portal at body level */
+.pending-sync-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* Panel - positioned fixed in top-right area */
 .pending-sync-panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    width: 280px;
-    max-height: 300px;
+    position: fixed;
+    top: 50px;
+    right: 16px;
+    width: 320px;
+    max-height: 400px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 9999;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -27,7 +36,7 @@
 
 .pending-sync-panel-header h4 {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -59,7 +68,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
     cursor: pointer;
     transition: background 0.15s ease;
     color: var(--text-primary);
@@ -70,7 +79,7 @@
 }
 
 .pending-sync-item-icon {
-    font-size: 0.9rem;
+    font-size: 1rem;
     flex-shrink: 0;
 }
 
@@ -90,19 +99,12 @@
 .pending-sync-item-type {
     font-size: 0.65rem;
     color: var(--text-tertiary);
+    margin-top: 2px;
 }
 
 .pending-sync-panel-empty {
-    padding: 1rem;
+    padding: 1.5rem 1rem;
     text-align: center;
     color: var(--text-tertiary);
-    font-size: 0.75rem;
-}
-
-/* Overlay for click-outside */
-.pending-sync-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    background: transparent;
+    font-size: 0.8rem;
 }

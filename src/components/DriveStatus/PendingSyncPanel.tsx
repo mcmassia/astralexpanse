@@ -1,6 +1,6 @@
-// Panel showing pending sync documents
+// Panel showing documents not synced with Drive
+import { createPortal } from 'react-dom';
 import { useObjectStore } from '../../stores/objectStore';
-import { usePendingSyncIds } from '../../stores/driveStore';
 import './PendingSyncPanel.css';
 
 interface PendingSyncPanelProps {
@@ -9,14 +9,11 @@ interface PendingSyncPanelProps {
 }
 
 export const PendingSyncPanel = ({ onClose, onSelectObject }: PendingSyncPanelProps) => {
-    const pendingIds = usePendingSyncIds();
     const objects = useObjectStore((s) => s.objects);
     const objectTypes = useObjectStore((s) => s.objectTypes);
 
-    // Get pending objects with their details
-    const pendingObjects = pendingIds
-        .map((id) => objects.find((o) => o.id === id))
-        .filter((obj): obj is NonNullable<typeof obj> => obj !== undefined);
+    // Get objects that don't have a driveFileId (not synced to Drive)
+    const unsyncedObjects = objects.filter((obj) => !obj.driveFileId);
 
     const getObjectTypeIcon = (typeId: string) => {
         const type = objectTypes.find((t) => t.id === typeId);
@@ -33,26 +30,26 @@ export const PendingSyncPanel = ({ onClose, onSelectObject }: PendingSyncPanelPr
         onClose();
     };
 
-    return (
+    const panelContent = (
         <>
             {/* Click-outside overlay */}
             <div className="pending-sync-overlay" onClick={onClose} />
 
             <div className="pending-sync-panel">
                 <div className="pending-sync-panel-header">
-                    <h4>📤 Pendientes de sincronizar</h4>
+                    <h4>📤 Sin sincronizar ({unsyncedObjects.length})</h4>
                     <button className="pending-sync-panel-close" onClick={onClose}>
                         ✕
                     </button>
                 </div>
 
                 <div className="pending-sync-panel-list">
-                    {pendingObjects.length === 0 ? (
+                    {unsyncedObjects.length === 0 ? (
                         <div className="pending-sync-panel-empty">
-                            No hay documentos pendientes
+                            ✅ Todos los documentos están sincronizados
                         </div>
                     ) : (
-                        pendingObjects.map((obj) => (
+                        unsyncedObjects.map((obj) => (
                             <div
                                 key={obj.id}
                                 className="pending-sync-item"
@@ -76,4 +73,7 @@ export const PendingSyncPanel = ({ onClose, onSelectObject }: PendingSyncPanelPr
             </div>
         </>
     );
+
+    // Use portal to render at document body level to avoid z-index issues
+    return createPortal(panelContent, document.body);
 };

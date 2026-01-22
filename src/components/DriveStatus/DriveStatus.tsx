@@ -1,6 +1,6 @@
 // Drive connection status indicator component
 import { useState, useEffect, useCallback } from 'react';
-import { useDriveStore, useDriveConnectionStatus, usePendingSyncCount } from '../../stores/driveStore';
+import { useDriveStore, useDriveConnectionStatus } from '../../stores/driveStore';
 import { useObjectStore } from '../../stores/objectStore';
 import { refreshGoogleAccessToken, getGoogleAccessTokenExpiration } from '../../services/firebase';
 import { checkDriveConnection } from '../../services/drive';
@@ -13,9 +13,12 @@ const TOKEN_LIFETIME_MS = 55 * 60 * 1000;
 
 export const DriveStatus = () => {
     const connectionStatus = useDriveConnectionStatus();
-    const pendingSyncCount = usePendingSyncCount();
+    const objects = useObjectStore((s) => s.objects);
     const setConnectionStatus = useDriveStore((s) => s.setConnectionStatus);
     const setTokenExpiration = useDriveStore((s) => s.setTokenExpiration);
+
+    // Count objects without driveFileId (not synced to Drive)
+    const unsyncedCount = objects.filter((obj) => !obj.driveFileId).length;
 
     const [isReconnecting, setIsReconnecting] = useState(false);
     const [tokenPercentage, setTokenPercentage] = useState<number | null>(null);
@@ -125,14 +128,14 @@ export const DriveStatus = () => {
                 </span>
             )}
 
-            {/* Pending sync badge - clickable */}
-            {pendingSyncCount > 0 && !isDisconnected && (
+            {/* Unsynced documents badge - clickable */}
+            {unsyncedCount > 0 && !isDisconnected && (
                 <button
                     className="drive-status-badge"
-                    title={`${pendingSyncCount} pendiente(s) - Click para ver`}
+                    title={`${unsyncedCount} sin sincronizar - Click para ver`}
                     onClick={() => setIsPanelOpen(true)}
                 >
-                    {pendingSyncCount}
+                    {unsyncedCount}
                 </button>
             )}
 
