@@ -60,12 +60,16 @@ interface UIStore {
     // Properties Panel
     propertiesPanelOpen: boolean;
 
+    // Backlinks Panel
+    backlinksPanelOpen: boolean;
+
     // Focus Mode
     focusMode: boolean;
     preFocusState: {
         sidebarOpen: boolean;
         calendarSidebarOpen: boolean;
         propertiesPanelOpen: boolean;
+        backlinksPanelOpen: boolean;
     } | null;
 
     // Global Navigation History
@@ -115,6 +119,9 @@ interface UIStore {
 
     // Properties Panel actions
     togglePropertiesPanel: () => void;
+
+    // Backlinks Panel actions
+    toggleBacklinksPanel: () => void;
 
     // Focus Mode actions
     toggleFocusMode: () => void;
@@ -169,6 +176,9 @@ export const useUIStore = create<UIStore>()(
 
             // Properties Panel default
             propertiesPanelOpen: true,
+
+            // Backlinks Panel default
+            backlinksPanelOpen: true,
 
             // Focus Mode defaults
             focusMode: false,
@@ -270,6 +280,9 @@ export const useUIStore = create<UIStore>()(
             // Properties Panel
             togglePropertiesPanel: () => set((s) => ({ propertiesPanelOpen: !s.propertiesPanelOpen })),
 
+            // Backlinks Panel
+            toggleBacklinksPanel: () => set((s) => ({ backlinksPanelOpen: !s.backlinksPanelOpen })),
+
             // Focus Mode
             toggleFocusMode: () => set((s) => {
                 if (s.focusMode) {
@@ -279,6 +292,7 @@ export const useUIStore = create<UIStore>()(
                         sidebarOpen: s.preFocusState?.sidebarOpen ?? true,
                         calendarSidebarOpen: s.preFocusState?.calendarSidebarOpen ?? true,
                         propertiesPanelOpen: s.preFocusState?.propertiesPanelOpen ?? true,
+                        backlinksPanelOpen: s.preFocusState?.backlinksPanelOpen ?? true,
                         preFocusState: null,
                     };
                 } else {
@@ -289,10 +303,12 @@ export const useUIStore = create<UIStore>()(
                             sidebarOpen: s.sidebarOpen,
                             calendarSidebarOpen: s.calendarSidebarOpen,
                             propertiesPanelOpen: s.propertiesPanelOpen,
+                            backlinksPanelOpen: s.backlinksPanelOpen,
                         },
                         sidebarOpen: false,
                         calendarSidebarOpen: false,
                         propertiesPanelOpen: false,
+                        backlinksPanelOpen: false,
                     };
                 }
             }),
@@ -303,6 +319,7 @@ export const useUIStore = create<UIStore>()(
                     sidebarOpen: s.preFocusState?.sidebarOpen ?? true,
                     calendarSidebarOpen: s.preFocusState?.calendarSidebarOpen ?? true,
                     propertiesPanelOpen: s.preFocusState?.propertiesPanelOpen ?? true,
+                    backlinksPanelOpen: s.preFocusState?.backlinksPanelOpen ?? true,
                     preFocusState: null,
                 };
             }),
@@ -368,6 +385,7 @@ export const useUIStore = create<UIStore>()(
                 sidebarWidth: state.sidebarWidth,
                 theme: state.theme,
                 calendarView: state.calendarView,
+                backlinksPanelOpen: state.backlinksPanelOpen,
                 calendarSidebarOpen: state.calendarSidebarOpen,
                 propertiesPanelOpen: state.propertiesPanelOpen,
             }),

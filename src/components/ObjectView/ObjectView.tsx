@@ -27,7 +27,7 @@ export const ObjectView = () => {
     const goForward = useObjectStore(s => s.goForward);
     const historyIndex = useObjectStore(s => s.historyIndex);
     const navigationHistory = useObjectStore(s => s.navigationHistory);
-    const { focusMode, toggleFocusMode, setHighlightSearchText } = useUIStore();
+    const { focusMode, toggleFocusMode, setHighlightSearchText, backlinksPanelOpen, toggleBacklinksPanel } = useUIStore();
     const toast = useToast();
 
     // Reactive navigation state
@@ -415,68 +415,85 @@ export const ObjectView = () => {
             />
 
             {backlinkedObjects.length > 0 && (
-                <div className="object-backlinks">
-                    <h3 className="backlinks-title">Enlaces entrantes ({backlinkedObjects.length})</h3>
-                    <div className="backlinks-list">
-                        {backlinkedObjects.map(obj => {
-                            const type = objectTypes.find(t => t.id === obj.type);
-                            const contexts = backlinkContexts[obj.id] || [];
-                            const isExpanded = expandedBacklinks.has(obj.id);
+                <div className={`object-backlinks ${backlinksPanelOpen ? 'expanded' : 'collapsed'}`}>
+                    <h3
+                        className="backlinks-title"
+                        onClick={toggleBacklinksPanel}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                toggleBacklinksPanel();
+                            }
+                        }}
+                    >
+                        <span className={`backlinks-chevron ${backlinksPanelOpen ? 'expanded' : ''}`}>▶</span>
+                        Enlaces entrantes
+                        <span className="backlinks-count">{backlinkedObjects.length}</span>
+                    </h3>
+                    {backlinksPanelOpen && (
+                        <div className="backlinks-list">
+                            {backlinkedObjects.map(obj => {
+                                const type = objectTypes.find(t => t.id === obj.type);
+                                const contexts = backlinkContexts[obj.id] || [];
+                                const isExpanded = expandedBacklinks.has(obj.id);
 
-                            return (
-                                <div key={obj.id} className="backlink-card">
-                                    <button
-                                        className="backlink-item"
-                                        onClick={() => handleBacklinkClick(obj.id)}
-                                        style={{ '--type-color': type?.color } as React.CSSProperties}
-                                    >
-                                        <span className="backlink-type-badge" style={{ backgroundColor: type?.color }}>
-                                            {type?.name?.toUpperCase() || 'OBJETO'}
-                                        </span>
-                                        <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
-                                        <span className="backlink-title">{obj.title}</span>
-                                    </button>
-
-                                    {contexts.length > 0 && (
+                                return (
+                                    <div key={obj.id} className="backlink-card">
                                         <button
-                                            className="context-toggle"
-                                            onClick={() => toggleBacklinkContext(obj.id)}
+                                            className="backlink-item"
+                                            onClick={() => handleBacklinkClick(obj.id)}
+                                            style={{ '--type-color': type?.color } as React.CSSProperties}
                                         >
-                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                            <span>Ver contexto ({contexts.length})</span>
+                                            <span className="backlink-type-badge" style={{ backgroundColor: type?.color }}>
+                                                {type?.name?.toUpperCase() || 'OBJETO'}
+                                            </span>
+                                            <LucideIcon name={type?.icon || 'FileText'} size={14} color={type?.color} />
+                                            <span className="backlink-title">{obj.title}</span>
                                         </button>
-                                    )}
 
-                                    {isExpanded && contexts.length > 0 && (
-                                        <div className="backlink-contexts">
-                                            {contexts.map((ctx, i) => {
-                                                // Extract clean text for search/highlight
-                                                const cleanText = ctx.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                                                const displayText = cleanText.slice(0, 300) + (cleanText.length > 300 ? '...' : '');
+                                        {contexts.length > 0 && (
+                                            <button
+                                                className="context-toggle"
+                                                onClick={() => toggleBacklinkContext(obj.id)}
+                                            >
+                                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                <span>Ver contexto ({contexts.length})</span>
+                                            </button>
+                                        )}
 
-                                                return (
-                                                    <blockquote
-                                                        key={i}
-                                                        className="context-snippet clickable"
-                                                        onClick={() => {
-                                                            // Set highlight text (first 50 chars for search)
-                                                            setHighlightSearchText(cleanText.slice(0, 50));
-                                                            // Navigate to the source object
-                                                            handleBacklinkClick(obj.id);
-                                                        }}
-                                                        title="Haz clic para ir a esta referencia"
-                                                    >
-                                                        {displayText}
-                                                    </blockquote>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                        {isExpanded && contexts.length > 0 && (
+                                            <div className="backlink-contexts">
+                                                {contexts.map((ctx, i) => {
+                                                    // Extract clean text for search/highlight
+                                                    const cleanText = ctx.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                                                    const displayText = cleanText.slice(0, 300) + (cleanText.length > 300 ? '...' : '');
 
-                                </div>
-                            );
-                        })}
-                    </div>
+                                                    return (
+                                                        <blockquote
+                                                            key={i}
+                                                            className="context-snippet clickable"
+                                                            onClick={() => {
+                                                                // Set highlight text (first 50 chars for search)
+                                                                setHighlightSearchText(cleanText.slice(0, 50));
+                                                                // Navigate to the source object
+                                                                handleBacklinkClick(obj.id);
+                                                            }}
+                                                            title="Haz clic para ir a esta referencia"
+                                                        >
+                                                            {displayText}
+                                                        </blockquote>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 
