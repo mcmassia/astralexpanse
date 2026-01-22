@@ -122,6 +122,9 @@ export const useAIStore = create<AIState>()(
                 }
             },
 
+            // Track last sync to prevent loops
+            _lastSyncedAt: 0,
+
             // Firestore: Subscribe to real-time updates
             subscribeToFirestore: (userId: string) => {
                 const { db } = initializeFirebase();
@@ -130,14 +133,22 @@ export const useAIStore = create<AIState>()(
                 const unsubscribe = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        // Only update if the remote has more messages (avoid overwrite loops)
-                        const currentLength = get().chatHistory.length;
-                        if (data.messages && data.messages.length > currentLength) {
+                        const remoteUpdatedAt = data.updatedAt || 0;
+                        const state = get();
+
+                        // Sync if:
+                        // 1. Remote has newer timestamp than our last sync (other browser saved)
+                        // 2. OR remote has different message count (handles initial load race)
+                        const shouldSync = remoteUpdatedAt > (state as any)._lastSyncedAt ||
+                            (data.messages && data.messages.length !== state.chatHistory.length);
+
+                        if (shouldSync && data.messages) {
                             set({
                                 chatHistory: data.messages,
-                                contextCache: data.contextCache || []
-                            });
-                            console.log('[AIStore] Synced updates from Firestore');
+                                contextCache: data.contextCache || [],
+                                _lastSyncedAt: remoteUpdatedAt
+                            } as any);
+                            console.log('[AIStore] Synced updates from Firestore', { remoteUpdatedAt, messageCount: data.messages.length });
                         }
                     }
                 });

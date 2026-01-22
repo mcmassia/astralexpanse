@@ -1,9 +1,12 @@
 // Drive connection status indicator component
 import { useState, useEffect, useCallback } from 'react';
 import { useDriveStore, useDriveConnectionStatus, usePendingSyncCount } from '../../stores/driveStore';
+import { useObjectStore } from '../../stores/objectStore';
 import { refreshGoogleAccessToken, getGoogleAccessTokenExpiration } from '../../services/firebase';
 import { checkDriveConnection } from '../../services/drive';
+import { PendingSyncPanel } from './PendingSyncPanel';
 import './DriveStatus.css';
+
 
 // Token lifetime is ~55 minutes (stored in firebase.ts)
 const TOKEN_LIFETIME_MS = 55 * 60 * 1000;
@@ -16,6 +19,8 @@ export const DriveStatus = () => {
 
     const [isReconnecting, setIsReconnecting] = useState(false);
     const [tokenPercentage, setTokenPercentage] = useState<number | null>(null);
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
+    const selectObject = useObjectStore((s) => s.selectObject);
 
     // Check connection periodically
     useEffect(() => {
@@ -120,11 +125,23 @@ export const DriveStatus = () => {
                 </span>
             )}
 
-            {/* Pending sync badge */}
+            {/* Pending sync badge - clickable */}
             {pendingSyncCount > 0 && !isDisconnected && (
-                <span className="drive-status-badge" title={`${pendingSyncCount} pendiente(s)`}>
+                <button
+                    className="drive-status-badge"
+                    title={`${pendingSyncCount} pendiente(s) - Click para ver`}
+                    onClick={() => setIsPanelOpen(true)}
+                >
                     {pendingSyncCount}
-                </span>
+                </button>
+            )}
+
+            {/* Pending sync panel */}
+            {isPanelOpen && (
+                <PendingSyncPanel
+                    onClose={() => setIsPanelOpen(false)}
+                    onSelectObject={selectObject}
+                />
             )}
         </div>
     );

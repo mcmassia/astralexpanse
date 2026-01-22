@@ -1,0 +1,107 @@
+/* Pending Sync Panel Styles */
+
+.pending-sync-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    max-height: 300px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.pending-sync-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.pending-sync-panel-header h4 {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.pending-sync-panel-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.pending-sync-panel-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.pending-sync-panel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+}
+
+.pending-sync-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    color: var(--text-primary);
+}
+
+.pending-sync-item:hover {
+    background: var(--bg-hover);
+}
+
+.pending-sync-item-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.pending-sync-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pending-sync-item-title {
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pending-sync-item-type {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+}
+
+.pending-sync-panel-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+/* Overlay for click-outside */
+.pending-sync-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}

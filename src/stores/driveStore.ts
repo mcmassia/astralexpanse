@@ -80,3 +80,4 @@ export const useDriveStore = create<DriveStore>()(
 export const useDriveConnectionStatus = () => useDriveStore((s) => s.connectionStatus);
 export const usePendingSyncCount = () => useDriveStore((s) => s.pendingSyncIds.size);
 export const useHasPendingSyncs = () => useDriveStore((s) => s.pendingSyncIds.size > 0);
+export const usePendingSyncIds = () => useDriveStore((s) => Array.from(s.pendingSyncIds));
