@@ -224,6 +224,50 @@ class AIService {
         const result = await this.retry(() => model.embedContent(text));
         return result.embedding.values;
     }
+
+    async summarizeWebPage(url: string): Promise<{ title: string; summary: string }> {
+        const { isEnabled } = useAIStore.getState();
+        if (!isEnabled) {
+            throw new Error('AI features are disabled.');
+        }
+
+        // 1. Fetch content via Jina proxy
+        const jinaUrl = `https://r.jina.ai/${url}`;
+        const response = await fetch(jinaUrl);
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch web content: ${response.statusText}`);
+        }
+
+        const textContent = await response.text();
+
+        // 2. Summarize with Gemini
+        const model = this.getModel('chat');
+        const prompt = `
+        You are an expert summarizer. 
+        Analyze the following web page content and produce a concise summary.
+        
+        URL: ${url}
+        CONTENT:
+        ${textContent.slice(0, 30000)} // Limit context window just in case
+        
+        INSTRUCTIONS:
+        1. Extract the main Title of the page.
+        2. Create a concise summary (max 3 paragraphs) capturing the key insights.
+        3. Use bullet points for key takeaways if appropriate.
+        4. Return STRICTLY JSON format: { "title": "Page Title", "summary": "Markdown formatted summary..." }
+        `;
+
+        try {
+            const result = await this.retry(() => model.generateContent(prompt));
+            const responseText = result.response.text();
+            const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleanJson);
+        } catch (error) {
+            console.error('Summarization failed:', error);
+            throw new Error('Failed to summarize content');
+        }
+    }
 }
 
 export const aiService = new AIService();

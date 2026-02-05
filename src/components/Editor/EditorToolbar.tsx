@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import { LinkModal } from './LinkModal';
 import { ImageModal } from './ImageModal';
+import { WebImportModal } from './WebImportModal';
 import { uploadImageToDrive, isDriveConnected, uploadFileToDrive, getAttachmentTypeInfo, formatFileSize, getDriveViewUrl } from '../../services/drive';
 import { useObjectStore } from '../../stores/objectStore';
 import './EditorToolbar.css';
@@ -161,6 +162,41 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
         // Reset file input
         if (attachmentInputRef.current) {
             attachmentInputRef.current.value = '';
+        }
+    };
+
+    // Web Import handlers
+    const [isWebModalOpen, setIsWebModalOpen] = useState(false);
+    const [isWebProcessing, setIsWebProcessing] = useState(false);
+
+    const handleWebImport = async (url: string) => {
+        setIsWebProcessing(true);
+        try {
+            // Import dynamically to avoid circular dependencies if any, 
+            // though here we can likely import at top. 
+            // Better to pull aiService import to top if not already there, 
+            // but for minimal diff we can assume it's imported or added.
+            // Using the global aiService import
+            const { aiService } = await import('../../services/ai');
+
+            const { title, summary } = await aiService.summarizeWebPage(url);
+
+            if (editor && !editor.isDestroyed) {
+                // Insert content
+                editor.chain().focus()
+                    .insertContent(`
+                        <p><strong><a href="${url}">${title}</a></strong></p>
+                        <blockquote>${summary}</blockquote>
+                        <p></p>
+                    `)
+                    .run();
+            }
+            setIsWebModalOpen(false);
+        } catch (error) {
+            console.error('Web import failed:', error);
+            alert('Fallo al importar la web. Verifica la URL o tu conexión.');
+        } finally {
+            setIsWebProcessing(false);
         }
     };
 
@@ -325,6 +361,14 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                     </button>
                     <button
                         type="button"
+                        onClick={() => setIsWebModalOpen(true)}
+                        className={isWebModalOpen ? 'is-active' : ''}
+                        title="Importar Web con IA"
+                    >
+                        🌐
+                    </button>
+                    <button
+                        type="button"
                         onClick={insertMath}
                         title="Insertar fórmula matemática"
                     >
@@ -458,6 +502,13 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                 onConfirm={handleLinkConfirm}
                 onRemove={currentLinkUrl ? handleLinkRemove : undefined}
                 onCancel={handleLinkCancel}
+            />
+
+            <WebImportModal
+                isOpen={isWebModalOpen}
+                onConfirm={handleWebImport}
+                onCancel={() => setIsWebModalOpen(false)}
+                isProcessing={isWebProcessing}
             />
 
             <ImageModal
