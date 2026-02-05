@@ -93,7 +93,9 @@ export const ObjectView = () => {
                     if (!contexts[data.parentId]) contexts[data.parentId] = [];
                     // Use originalText for clean display, fallback to content
                     const snippet = data.originalText || data.content || '';
-                    if (snippet) contexts[data.parentId].push(snippet);
+                    if (snippet && !contexts[data.parentId].includes(snippet)) {
+                        contexts[data.parentId].push(snippet);
+                    }
                 });
                 setBacklinkContexts(contexts);
             } catch (err) {
