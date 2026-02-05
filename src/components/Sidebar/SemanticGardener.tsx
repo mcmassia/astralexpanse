@@ -22,13 +22,13 @@ const cosineSimilarity = (vecA: number[], vecB: number[]) => {
 };
 
 export const SemanticGardener: React.FC = () => {
+    const { isEnabled, featureFlags } = useAIStore();
     const { objects, selectedObjectId, selectObject } = useObjectStore();
-    const { isEnabled } = useAIStore();
 
     const selectedObject = objects.find(o => o.id === selectedObjectId);
 
     const suggestions = useMemo(() => {
-        if (!selectedObject || !selectedObject.embedding || !isEnabled) return [];
+        if (!selectedObject || !selectedObject.embedding || !isEnabled || !featureFlags.semanticGardener) return [];
 
         const candidates = objects.filter(o =>
             o.id !== selectedObject.id &&
@@ -64,7 +64,7 @@ export const SemanticGardener: React.FC = () => {
         return Array.from(tags).slice(0, 5);
     }, [suggestions, selectedObject]);
 
-    if (!isEnabled) {
+    if (!isEnabled || !featureFlags.semanticGardener) {
         return (
             <div className="semantic-gardener disabled">
                 <p>AI Gardener is disabled.</p>

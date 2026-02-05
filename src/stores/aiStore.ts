@@ -34,6 +34,11 @@ interface AIState {
     apiKey: string;
     isEnabled: boolean;
     models: AIModelConfig;
+    featureFlags: {
+        semanticGardener: boolean;
+        entityExtraction: boolean;
+        chat: boolean;
+    };
 
     // Chat History Persistence
     chatHistory: ChatMessage[];
@@ -42,6 +47,7 @@ interface AIState {
     setApiKey: (key: string) => void;
     setEnabled: (enabled: boolean) => void;
     setModel: (feature: keyof AIModelConfig, modelId: string) => void;
+    setFeatureFlag: (feature: 'semanticGardener' | 'entityExtraction' | 'chat', value: boolean) => void;
 
     // Chat Actions
     addChatMessage: (message: ChatMessage) => void;
@@ -66,12 +72,21 @@ export const useAIStore = create<AIState>()(
             models: DEFAULT_MODELS,
             chatHistory: [WELCOME_MESSAGE],
             contextCache: [],
+            featureFlags: {
+                semanticGardener: true,
+                entityExtraction: true,
+                chat: true,
+            },
 
             setApiKey: (apiKey) => set({ apiKey }),
             setEnabled: (isEnabled) => set({ isEnabled }),
             setModel: (feature, modelId) =>
                 set((state) => ({
                     models: { ...state.models, [feature]: modelId }
+                })),
+            setFeatureFlag: (feature, value) =>
+                set((state) => ({
+                    featureFlags: { ...state.featureFlags, [feature]: value }
                 })),
 
             addChatMessage: (message) => set((state) => ({
@@ -81,7 +96,14 @@ export const useAIStore = create<AIState>()(
                 chatHistory: [WELCOME_MESSAGE],
                 contextCache: []
             }),
-            resetDefaults: () => set({ models: DEFAULT_MODELS }),
+            resetDefaults: () => set({
+                models: DEFAULT_MODELS,
+                featureFlags: {
+                    semanticGardener: true,
+                    entityExtraction: true,
+                    chat: true,
+                }
+            }),
 
             // Firestore: Load chat history
             loadChatFromFirestore: async (userId: string) => {
@@ -183,6 +205,7 @@ export const useAIStore = create<AIState>()(
                 apiKey: state.apiKey,
                 isEnabled: state.isEnabled,
                 models: state.models,
+                featureFlags: state.featureFlags,
                 // Note: chatHistory is persisted to Firestore, not localStorage
             }),
         }

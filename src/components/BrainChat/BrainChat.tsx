@@ -35,7 +35,7 @@ export const BrainChat = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const { objects, objectTypes, createObject, updateObject } = useObjectStore();
-    const { isEnabled, apiKey, chatHistory, addChatMessage, loadChatFromFirestore, saveChatToFirestore, subscribeToFirestore, getContextFromCache, addContextCacheEntry } = useAIStore();
+    const { isEnabled, apiKey, chatHistory, featureFlags, addChatMessage, loadChatFromFirestore, saveChatToFirestore, subscribeToFirestore, getContextFromCache, addContextCacheEntry } = useAIStore();
     const { setCurrentSection, pushNavHistory } = useUIStore();
 
     // Get current user for Firestore persistence
@@ -647,12 +647,16 @@ ${cleanContent.slice(0, charLimit)}
         }
     };
 
-    if (!isEnabled) {
+    if (!isEnabled || !featureFlags.chat) {
         return (
             <div className="brain-chat-disabled">
                 <Sparkles size={48} />
                 <h2>Brain Chat no disponible</h2>
-                <p>Configura tu API Key de Gemini en los ajustes para hablar con tu cerebro.</p>
+                <p>
+                    {!isEnabled
+                        ? "Activa la IA en los ajustes para hablar con tu cerebro."
+                        : "El módulo de chat está desactivado en la configuración."}
+                </p>
             </div>
         );
     }

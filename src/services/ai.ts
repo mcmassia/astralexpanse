@@ -45,6 +45,12 @@ class AIService {
     }
 
     async extractEntities(content: string): Promise<any[]> {
+        const { isEnabled, featureFlags } = useAIStore.getState();
+
+        if (!isEnabled || !featureFlags.entityExtraction) {
+            return [];
+        }
+
         const model = this.getModel('entityExtraction');
         const prompt = `
       Analyze the following text and extract actionable entities.

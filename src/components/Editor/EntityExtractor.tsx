@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, Loader2, Calendar, User, CheckSquare, BrainCircuit } from 'lucide-react';
 import { aiService } from '../../services/ai';
 import { useObjectStore } from '../../stores/objectStore';
+import { useAIStore } from '../../stores/aiStore';
 import { useToast } from '../common';
 import './EntityExtractor.css';
 
@@ -28,6 +29,14 @@ export const EntityExtractor: React.FC<EntityExtractorProps> = ({ content, onClo
 
     useEffect(() => {
         const analyze = async () => {
+            const { isEnabled, featureFlags } = useAIStore.getState();
+
+            if (!isEnabled || !featureFlags.entityExtraction) {
+                setAnalyzing(false);
+                setEntities([]);
+                return;
+            }
+
             try {
                 // Strip HTML tags for analysis
                 const textContent = content.replace(/<[^>]*>/g, ' ');
@@ -145,7 +154,11 @@ export const EntityExtractor: React.FC<EntityExtractorProps> = ({ content, onClo
                         </div>
                     ) : entities.length === 0 ? (
                         <div className="ee-empty">
-                            <p>No entities found in this text.</p>
+                            <p>
+                                {(!useAIStore.getState().isEnabled || !useAIStore.getState().featureFlags.entityExtraction)
+                                    ? "Entity extraction is disabled in settings."
+                                    : "No entities found in this text."}
+                            </p>
                         </div>
                     ) : (
                         <div className="ee-list">

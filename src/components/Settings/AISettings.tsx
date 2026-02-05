@@ -8,6 +8,7 @@ export const AISettings: React.FC = () => {
         apiKey, setApiKey,
         isEnabled, setEnabled,
         models, setModel,
+        featureFlags, setFeatureFlag,
         resetDefaults
     } = useAIStore();
 
@@ -74,6 +75,60 @@ export const AISettings: React.FC = () => {
                         <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">
                             Get a free API key here
                         </a>
+                    </div>
+                </div>
+
+                {/* Module Activation */}
+                <div className="setting-card">
+                    <div className="card-header">
+                        <Cpu size={18} />
+                        <h3>Module Activation</h3>
+                    </div>
+                    <div className="model-grid">
+                        <div className="toggle-row">
+                            <div className="toggle-info">
+                                <label>Semantic Gardener</label>
+                                <span className="field-hint">Automatic linking suggestions in sidebar</span>
+                            </div>
+                            <label className="switch small">
+                                <input
+                                    type="checkbox"
+                                    checked={featureFlags.semanticGardener}
+                                    onChange={(e) => setFeatureFlag('semanticGardener', e.target.checked)}
+                                />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div className="toggle-row">
+                            <div className="toggle-info">
+                                <label>Entity Extraction</label>
+                                <span className="field-hint">Analyze notes for tasks & events</span>
+                            </div>
+                            <label className="switch small">
+                                <input
+                                    type="checkbox"
+                                    checked={featureFlags.entityExtraction}
+                                    onChange={(e) => setFeatureFlag('entityExtraction', e.target.checked)}
+                                />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
+
+                        <div className="toggle-row">
+                            <div className="toggle-info">
+                                <label>Chat with Brain</label>
+                                <span className="field-hint">RAG Chat interface</span>
+                            </div>
+                            <label className="switch small">
+                                <input
+                                    type="checkbox"
+                                    checked={featureFlags.chat}
+                                    onChange={(e) => setFeatureFlag('chat', e.target.checked)}
+                                />
+                                <span className="slider round"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
