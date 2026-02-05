@@ -728,9 +728,11 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
 
 
 
-    // Handle click on mentions
+    // Handle click on mentions and links
     const handleEditorClick = useCallback((e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
+
+        // Handle Mentions
         const mentionEl = target.classList.contains('mention')
             ? target
             : target.closest('.mention') as HTMLElement | null;
@@ -741,9 +743,29 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 e.preventDefault();
                 e.stopPropagation();
                 onMentionClick(mentionId);
+                return;
             }
         }
-    }, [onMentionClick]);
+
+        // Handle Links (intercept standard links since openOnClick is false for ObjectLink)
+        // ObjectLink handles both object: and https: links now
+        const linkEl = target.tagName === 'A' ? target : target.closest('a');
+        if (linkEl) {
+            const href = linkEl.getAttribute('href');
+            if (href && !href.startsWith('object:')) {
+                // It's a standard web link
+                if (e.metaKey || e.ctrlKey || !editable) {
+                    // Allow default behavior (open in new tab) or force it
+                    window.open(href, '_blank', 'noreferrer');
+                } else {
+                    // In edit mode without modifier, maybe show a tooltip? 
+                    // For now, let's just allow opening if clicked explicitly
+                    window.open(href, '_blank', 'noreferrer');
+                }
+                e.preventDefault();
+            }
+        }
+    }, [onMentionClick, editable]);
 
     if (!editor) return null;
 

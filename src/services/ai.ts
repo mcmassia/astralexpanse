@@ -236,10 +236,21 @@ class AIService {
         const response = await fetch(jinaUrl);
 
         if (!response.ok) {
+            console.error(`[AI] Jina fetch failed for ${url}: ${response.status} ${response.statusText}`);
+            // Check for potential CORS or blocking issues
+            if (response.status === 403 || response.status === 401) {
+                console.error('[AI] Access denied by target or proxy. The URL might be blocking bots.');
+            }
             throw new Error(`Failed to fetch web content: ${response.statusText}`);
         }
 
         const textContent = await response.text();
+
+        // Check if content is too short (likely failed scrape or empty page)
+        if (textContent.length < 50) {
+            console.warn('[AI] Scraped content is suspiciously short:', textContent);
+            throw new Error('Scraped content is too short or empty. The site might be blocking the proxy.');
+        }
 
         // 2. Summarize with Gemini
         const model = this.getModel('chat');
