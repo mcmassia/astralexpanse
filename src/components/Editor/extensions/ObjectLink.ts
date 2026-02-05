@@ -69,6 +69,9 @@ export const ObjectLink = Link.extend({
             {
                 tag: 'a[href^="object:"]',
             },
+            {
+                tag: 'a[href]',
+            },
         ];
     },
 
