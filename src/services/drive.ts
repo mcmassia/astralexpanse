@@ -166,7 +166,14 @@ export const objectToMarkdown = (obj: AstralObject): string => {
     }
 
     // Simple HTML to Markdown conversion (basic)
-    const content = obj.content
+    // First, protect special components (like context blocks) from being stripped
+    const contextBlocks: string[] = [];
+    let processedContent = obj.content.replace(/<div[^>]*data-type="context-block"[^>]*>.*?<\/div>/gi, (match) => {
+        contextBlocks.push(match);
+        return `__CUSTOM_BLOCK_${contextBlocks.length - 1}__`;
+    });
+
+    processedContent = processedContent
         .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
         .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n')
         .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n')
@@ -180,6 +187,13 @@ export const objectToMarkdown = (obj: AstralObject): string => {
         .replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '![]($1)')
         .replace(/<[^>]+>/g, '') // Remove remaining HTML tags
         .trim();
+
+    // Restore protected blocks
+    contextBlocks.forEach((block, index) => {
+        processedContent = processedContent.replace(`__CUSTOM_BLOCK_${index}__`, block);
+    });
+
+    const content = processedContent;
 
     const yamlLines = ['---'];
     for (const [key, value] of Object.entries(frontmatter)) {
