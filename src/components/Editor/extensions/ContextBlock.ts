@@ -34,7 +34,12 @@ export const ContextBlock = Node.create<ContextBlockOptions>({
             },
             cachedContent: {
                 default: '',
-                parseHTML: element => element.getAttribute('data-cached-content'),
+                parseHTML: element => {
+                    const attr = element.getAttribute('data-cached-content');
+                    if (attr) return attr;
+                    // Fallback: Read innerHTML if attribute is missing (for readable persistence)
+                    return element.innerHTML;
+                },
                 renderHTML: attributes => {
                     return {
                         'data-cached-content': attributes.cachedContent,

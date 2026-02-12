@@ -168,8 +168,32 @@ export const objectToMarkdown = (obj: AstralObject): string => {
     // Simple HTML to Markdown conversion (basic)
     // First, protect special components (like context blocks) from being stripped
     const contextBlocks: string[] = [];
-    let processedContent = obj.content.replace(/<div[^>]*data-type="context-block"[^>]*>.*?<\/div>/gi, (match) => {
-        contextBlocks.push(match);
+    // Match context blocks (handling multiline content if any)
+    let processedContent = obj.content.replace(/<div[^>]*data-type="context-block"[^>]*>[\s\S]*?<\/div>/gi, (match) => {
+        // Extract attributes
+        const sourceIdMatch = match.match(/data-source-id="([^"]*)"/);
+        const sourceId = sourceIdMatch ? sourceIdMatch[1] : '';
+
+        const contentMatch = match.match(/data-cached-content="([^"]*)"/);
+        let innerContent = '';
+
+        if (contentMatch) {
+            // Unescape HTML entities to make it readable in Markdown
+            innerContent = contentMatch[1]
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&');
+        } else {
+            // Fallback: preserve existing inner content if no attribute (already converted)
+            const innerMatch = match.match(/>([\s\S]*?)<\/div>/);
+            if (innerMatch) innerContent = innerMatch[1];
+        }
+
+        // Create readable HTML block
+        const newBlock = `<div data-type="context-block" data-source-id="${sourceId}">\n${innerContent}\n</div>`;
+
+        contextBlocks.push(newBlock);
         return `__CUSTOM_BLOCK_${contextBlocks.length - 1}__`;
     });
 
