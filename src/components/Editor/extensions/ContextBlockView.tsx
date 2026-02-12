@@ -1,23 +1,16 @@
-import { NodeViewWrapper } from '@tiptap/react';
+import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { useMemo } from 'react';
 import { useObjectStore } from '../../../stores/objectStore';
 import { extractContext } from '../../../utils/contextExtractor';
 import { LucideIcon } from '../../common';
 import './ContextBlock.css';
 
-interface ContextBlockViewProps {
-    node: {
-        attrs: {
-            sourceId: string;
-        };
-    };
-    editor: {
-        isEditable: boolean;
-    };
+interface ContextBlockAttrs {
+    sourceId: string;
 }
 
-export function ContextBlockView({ node }: ContextBlockViewProps) {
-    const { sourceId } = node.attrs;
+export function ContextBlockView({ node }: NodeViewProps) {
+    const { sourceId } = node.attrs as ContextBlockAttrs;
 
     // Get all objects and object types from store
     const objects = useObjectStore(s => s.objects);
