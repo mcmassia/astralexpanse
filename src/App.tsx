@@ -6,7 +6,8 @@ import { useUIStore } from './stores/uiStore';
 import { useDriveStore } from './stores/driveStore';
 import { useCalendarStore } from './stores/calendarStore';
 import { Sidebar } from './components/Sidebar';
-import { ObjectView } from './components/ObjectView';
+import { DraggableModal, ToastProvider } from './components/common';
+import { ObjectView, ObjectViewContent } from './components/ObjectView';
 import { ObjectsList } from './components/ObjectsList';
 import { Dashboard } from './components/Dashboard';
 import { Calendar } from './components/Calendar';
@@ -17,7 +18,6 @@ import { NavBar } from './components/NavBar';
 import { SemanticGardener } from './components/Sidebar/SemanticGardener';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { BrainChat } from './components/BrainChat/BrainChat';
-import { ToastProvider } from './components/common';
 import { getGoogleAccessTokenExpiration } from './services/firebase';
 import './index.css';
 
@@ -265,12 +265,52 @@ function App() {
         {/* Import Modal */}
         <ImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
 
+
         {/* Settings Modal */}
         <SettingsModal isOpen={settingsOpen} onClose={useUIStore.getState().closeSettings} />
+
+        {/* Draggable Object Modals */}
+        <ObjectModalsContainer />
       </div>
     </ToastProvider>
   );
 }
+
+const ObjectModalsContainer = () => {
+  const openObjectModals = useUIStore(s => s.openObjectModals);
+  const closeObjectModal = useUIStore(s => s.closeObjectModal);
+  const bringModalToFront = useUIStore(s => s.bringModalToFront);
+  const objects = useObjectStore(s => s.objects);
+
+  return (
+    <>
+      {openObjectModals.map((id, index) => {
+        const object = objects.find(o => o.id === id);
+        if (!object) return null;
+
+        return (
+          <DraggableModal
+            key={id}
+            isOpen={true}
+            onClose={() => closeObjectModal(id)}
+            title={object.title}
+            initialPosition={{ x: 100 + (index * 20), y: 100 + (index * 20) }}
+            width={800}
+            height={600}
+          >
+            {/* We use a wrapper to handle click-to-front */}
+            <div
+              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              onMouseDownCapture={() => bringModalToFront(id)}
+            >
+              <ObjectViewContent objectId={id} isModal={true} onClose={() => closeObjectModal(id)} />
+            </div>
+          </DraggableModal>
+        );
+      })}
+    </>
+  );
+};
 
 export default App;
 

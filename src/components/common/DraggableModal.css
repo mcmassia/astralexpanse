@@ -1,0 +1,80 @@
+.draggable-modal {
+    position: fixed;
+    z-index: 1000;
+    background: var(--bg-primary, #1e1e2e);
+    border: 1px solid var(--border-color, #3f3f5a);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 300px;
+    min-height: 200px;
+    resize: both;
+    /* Native CSS resizing */
+}
+
+.draggable-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-tertiary, #2a2a3e);
+    border-bottom: 1px solid var(--border-color, #3f3f5a);
+    cursor: grab;
+    user-select: none;
+}
+
+.draggable-modal-header:active {
+    cursor: grabbing;
+}
+
+.draggable-handle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, #9ca3af);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.draggable-close {
+    background: none;
+    border: none;
+    color: var(--text-muted, #6b7280);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.draggable-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.draggable-modal-content {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: var(--bg-secondary, #181825);
+}
+
+/* Scrollbar styling for content */
+.draggable-modal-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.draggable-modal-content::-webkit-scrollbar-thumb {
+    background: var(--border-color, #3f3f5a);
+    border-radius: 3px;
+}
+
+.draggable-modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}

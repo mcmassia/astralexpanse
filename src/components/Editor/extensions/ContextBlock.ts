@@ -32,6 +32,15 @@ export const ContextBlock = Node.create<ContextBlockOptions>({
                     };
                 },
             },
+            cachedContent: {
+                default: '',
+                parseHTML: element => element.getAttribute('data-cached-content'),
+                renderHTML: attributes => {
+                    return {
+                        'data-cached-content': attributes.cachedContent,
+                    };
+                },
+            },
         };
     },
 
@@ -46,6 +55,7 @@ export const ContextBlock = Node.create<ContextBlockOptions>({
     renderHTML({ HTMLAttributes }) {
         return ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-type': 'context-block' })];
     },
+
 
     addNodeView() {
         return ReactNodeViewRenderer(ContextBlockView);

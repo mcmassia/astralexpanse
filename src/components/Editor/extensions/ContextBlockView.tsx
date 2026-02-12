@@ -1,6 +1,7 @@
+import React, { useMemo, useEffect } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { useMemo } from 'react';
 import { useObjectStore } from '../../../stores/objectStore';
+import { useUIStore } from '../../../stores/uiStore';
 import { extractContext } from '../../../utils/contextExtractor';
 import { LucideIcon } from '../../common';
 import './ContextBlock.css';
@@ -9,20 +10,13 @@ interface ContextBlockAttrs {
     sourceId: string;
 }
 
-export function ContextBlockView({ node }: NodeViewProps) {
+export function ContextBlockView({ node, updateAttributes }: NodeViewProps) {
     const { sourceId } = node.attrs as ContextBlockAttrs;
+    const { openObjectModal } = useUIStore();
 
     // Get all objects and object types from store
     const objects = useObjectStore(s => s.objects);
     const objectTypes = useObjectStore(s => s.objectTypes);
-
-    // If no sourceId is provided, we can default to the currently selected object 
-    // (though in strict TipTap node logic, attributes should be explicit)
-    // For now, let's assume sourceId represents the object *hosting* this block,
-    // so we want to find OTHER objects that link TO it.
-
-    // Wait... if the user inserts this block into Object A, they want to see mentions of Object A in other objects.
-    // So sourceId should be Object A's ID.
 
     const relevantContexts = useMemo(() => {
         if (!sourceId) return [];
@@ -34,20 +28,32 @@ export function ContextBlockView({ node }: NodeViewProps) {
             objectColor: string;
             snippets: string[];
             updatedAt: Date;
+            sortDate: Date; // Property used for sorting
         }> = [];
 
         objects.forEach(obj => {
-            // Check if this object links to our sourceId
-            // 1. Check direct links array (old style)
-            // 2. Check properties (new style relations)
-            // 3. Check content mentions (most important for context)
-
-            // We use extractContext which checks the HTML content directly for mentions/links
-            // This is the most accurate for "contextual" info in the body
             const snippets = extractContext(obj.content, sourceId);
 
             if (snippets.length > 0) {
                 const type = objectTypes.find(t => t.id === obj.type);
+
+                // Find 'date' property for sorting
+                let sortDate = new Date(obj.updatedAt);
+                if (obj.properties) {
+                    for (const [key, value] of Object.entries(obj.properties)) {
+                        // We check for any property that looks like a date or is of type 'date' (if we had schema info here)
+                        // For now, let's look for a property literally named "date" or "fecha" or check strict type if available
+                        // Assuming value might be a date string.
+                        // Ideally we check the Type definition, but we just have the object.
+                        // Let's check if the type definition says it's a date.
+                        const propDef = type?.properties.find(p => p.id === key);
+                        if (propDef?.type === 'date' && value) {
+                            sortDate = new Date(value as string);
+                            break; // Use the first found date property
+                        }
+                    }
+                }
+
                 contexts.push({
                     objectId: obj.id,
                     objectTitle: obj.title,
@@ -55,14 +61,44 @@ export function ContextBlockView({ node }: NodeViewProps) {
                     objectColor: type?.color || '#ccc',
                     snippets: snippets,
                     updatedAt: new Date(obj.updatedAt),
+                    sortDate: sortDate
                 });
             }
         });
 
-        // Sort by date (newest first)
-        return contexts.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+        // Sort by date (descending)
+        return contexts.sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
     }, [objects, sourceId, objectTypes]);
+
+    // Persistence: Update the node attribute with the rendered HTML representation
+    // We construct a simple HTML representation of the current state
+    useEffect(() => {
+        if (relevantContexts.length === 0) return;
+
+        // Generate HTML string
+        const htmlParts = relevantContexts.map(ctx => `
+            <div style="border-left: 2px solid ${ctx.objectColor}; padding-left: 8px; margin-bottom: 8px;">
+                <strong>${ctx.objectTitle}</strong> <small>(${ctx.updatedAt.toLocaleDateString()})</small>
+                <div>${ctx.snippets.join('<br/>')}</div>
+            </div>
+        `);
+        const fullHtml = `<div class="context-block-persist">${htmlParts.join('')}</div>`;
+
+        // Only update if changed to avoid loops (TipTap safeguards this usually, but good to be careful)
+        if (node.attrs.cachedContent !== fullHtml) {
+            // We use a timeout to avoid updating during render cycle
+            setTimeout(() => {
+                updateAttributes({ cachedContent: fullHtml });
+            }, 0);
+        }
+    }, [relevantContexts, updateAttributes, node.attrs.cachedContent]);
+
+
+    const handleLinkClick = (e: React.MouseEvent, objectId: string) => {
+        e.preventDefault();
+        openObjectModal(objectId);
+    };
 
     if (!sourceId) {
         return (
@@ -88,12 +124,15 @@ export function ContextBlockView({ node }: NodeViewProps) {
                     {relevantContexts.map(ctx => (
                         <div key={ctx.objectId} className="context-item">
                             <div className="context-item-header" style={{ '--type-color': ctx.objectColor } as React.CSSProperties}>
-                                <div className="context-source-badge">
+                                <button
+                                    className="context-source-badge clickable"
+                                    onClick={(e) => handleLinkClick(e, ctx.objectId)}
+                                >
                                     <LucideIcon name={ctx.objectIcon || 'FileText'} size={14} color={ctx.objectColor} />
                                     <span className="source-title">{ctx.objectTitle}</span>
-                                </div>
+                                </button>
                                 <span className="source-date">
-                                    {ctx.updatedAt.toLocaleDateString()}
+                                    {ctx.sortDate.toLocaleDateString()}
                                 </span>
                             </div>
 

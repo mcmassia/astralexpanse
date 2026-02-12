@@ -1,1 +1,1 @@
-export { ObjectView } from './ObjectView';
+export { ObjectView, ObjectViewContent } from './ObjectView';

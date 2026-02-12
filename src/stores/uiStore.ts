@@ -136,7 +136,13 @@ interface UIStore {
     applyPanelFilter: (query: DashboardPanelQuery, panelName: string) => void;
     clearPanelFilter: () => void;
 
-    // Highlight actions
+    // Open Object Modals (Draggable)
+    openObjectModals: string[];
+    openObjectModal: (objectId: string) => void;
+    closeObjectModal: (objectId: string) => void;
+    bringModalToFront: (objectId: string) => void;
+
+    // Highlight text in editor when navigating from backlinks
     setHighlightSearchText: (text: string | null) => void;
 }
 
@@ -372,6 +378,24 @@ export const useUIStore = create<UIStore>()(
             clearPanelFilter: () => set({
                 activePanelFilter: null,
                 activePanelName: null,
+            }),
+
+            // Object Modals
+            openObjectModals: [],
+            openObjectModal: (objectId) => set((s) => {
+                if (s.openObjectModals.includes(objectId)) {
+                    // Bring to front if already open
+                    const others = s.openObjectModals.filter(id => id !== objectId);
+                    return { openObjectModals: [...others, objectId] };
+                }
+                return { openObjectModals: [...s.openObjectModals, objectId] };
+            }),
+            closeObjectModal: (objectId) => set((s) => ({
+                openObjectModals: s.openObjectModals.filter(id => id !== objectId)
+            })),
+            bringModalToFront: (objectId) => set((s) => {
+                const others = s.openObjectModals.filter(id => id !== objectId);
+                return { openObjectModals: [...others, objectId] };
             }),
 
             // Highlight action

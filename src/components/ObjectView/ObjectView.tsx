@@ -5,30 +5,33 @@ import { useUIStore } from '../../stores/uiStore';
 import { Editor } from '../Editor';
 import type { EditorRef } from '../Editor';
 import { PropertiesPanel } from './PropertiesPanel';
-// AttachmentsPanel hidden for now - attachments are now objects of type "Adjunto"
-// import { AttachmentsPanel } from './AttachmentsPanel';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import { EntityExtractor } from '../Editor/EntityExtractor';
-import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
+import { BrainCircuit, ChevronDown, ChevronRight, X } from 'lucide-react';
 import './ObjectView.css';
 
+interface ObjectViewContentProps {
+    objectId: string;
+    isModal?: boolean;
+    onClose?: () => void;
+}
 
-export const ObjectView = () => {
-    const selectedObject = useSelectedObject();
+export const ObjectViewContent = ({ objectId, isModal = false, onClose }: ObjectViewContentProps) => {
     const objects = useObjectStore(s => s.objects);
     const objectTypes = useObjectStore(s => s.objectTypes);
     const updateObject = useObjectStore(s => s.updateObject);
     const deleteObject = useObjectStore(s => s.deleteObject);
-    const selectObject = useObjectStore(s => s.selectObject);
     const createObject = useObjectStore(s => s.createObject);
     const goBack = useObjectStore(s => s.goBack);
     const goForward = useObjectStore(s => s.goForward);
     const historyIndex = useObjectStore(s => s.historyIndex);
     const navigationHistory = useObjectStore(s => s.navigationHistory);
-    const { focusMode, toggleFocusMode, setHighlightSearchText, backlinksPanelOpen, toggleBacklinksPanel } = useUIStore();
+    const { focusMode, toggleFocusMode, setHighlightSearchText, backlinksPanelOpen, toggleBacklinksPanel, openObjectModal } = useUIStore();
     const toast = useToast();
 
-    // Reactive navigation state
+    const selectedObject = useMemo(() => objects.find(o => o.id === objectId), [objects, objectId]);
+
+    // Reactive navigation state (only relevant for main view)
     const canGoBack = historyIndex > 0;
     const canGoForward = historyIndex < navigationHistory.length - 1;
 
@@ -74,14 +77,8 @@ export const ObjectView = () => {
             return;
         }
 
-
         objects.forEach(obj => {
-            // Check if this object is in the backlinked list
-            // (Optimize: we could just iterate backlinkedObjects, but we need to ensure they have content loaded)
             if (backlinkedObjects.some(bo => bo.id === obj.id)) {
-                // Use the shared utility to extract rich context
-                // This ensures consistency with the Context Block in the editor
-                // and avoids relying on potentially stale Firestore search_chunks
                 import('../../utils/contextExtractor').then(({ extractContext }) => {
                     const snippets = extractContext(obj.content, selectedObject.id);
                     if (snippets.length > 0) {
@@ -107,7 +104,6 @@ export const ObjectView = () => {
             return next;
         });
     };
-
 
     const handleTitleClick = () => {
         if (selectedObject) {
@@ -184,6 +180,9 @@ export const ObjectView = () => {
         try {
             await deleteObject(selectedObject.id);
             toast.success('Objeto eliminado', `"${deletedTitle}" ha sido eliminado correctamente.`);
+            if (isModal && onClose) {
+                onClose();
+            }
         } catch (error) {
             toast.error('Error al eliminar', 'No se pudo eliminar el objeto. Inténtalo de nuevo.');
         } finally {
@@ -193,81 +192,54 @@ export const ObjectView = () => {
     };
 
     const handleBacklinkClick = (id: string) => {
-        selectObject(id);
+        // In modals, clicking a backlink should open another modal? or navigate main view?
+        // Let's open another modal to preserve context stack
+        openObjectModal(id);
     };
 
     // Handle clicking on mentions, hashtags, and inline tasks within the content
     const handleMentionClick = useCallback((e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
 
-        // Check for hashtag pill click
-        const hashtagEl = target.classList.contains('hashtag-pill')
-            ? target
-            : target.closest('.hashtag-pill') as HTMLElement | null;
-        if (hashtagEl) {
-            const tagId = hashtagEl.getAttribute('data-hashtag-id');
-            if (tagId) {
-                e.preventDefault();
-                e.stopPropagation();
-                selectObject(tagId);
-                return;
-            }
-        }
+        const getTargetId = (selector: string, attr: string) => {
+            const el = target.closest(selector);
+            return el ? el.getAttribute(attr) : null;
+        };
 
-        // Check for task inline click
-        const taskEl = target.classList.contains('task-inline')
-            ? target
-            : target.closest('.task-inline') as HTMLElement | null;
-        if (taskEl) {
-            const taskId = taskEl.getAttribute('data-task-id');
-            if (taskId) {
-                e.preventDefault();
-                e.stopPropagation();
-                selectObject(taskId);
-                return;
-            }
-        }
-
+        let targetId =
+            getTargetId('.hashtag-pill', 'data-hashtag-id') ||
+            getTargetId('.task-inline', 'data-task-id') ||
+            getTargetId('.mention', 'data-mention-id');
 
         // Check for Object Link Pill (New formatted links)
         const objectLinkEl = target.closest('.object-link-pill') || target.closest('a[href^="object:"]');
         if (objectLinkEl) {
             const href = objectLinkEl.getAttribute('href');
             if (href && href.startsWith('object:')) {
-                const id = href.split(':')[1];
-                if (id) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    selectObject(id);
-                    return;
-                }
+                targetId = href.split(':')[1];
             }
         }
 
-        // Check for mention click (existing behavior)
-        if (target.classList.contains('mention') || target.closest('.mention')) {
-            const mentionEl = target.classList.contains('mention') ? target : target.closest('.mention') as HTMLElement;
-            const mentionId = mentionEl?.getAttribute('data-mention-id');
-            if (mentionId) {
-                selectObject(mentionId);
-            }
+        if (targetId) {
+            e.preventDefault();
+            e.stopPropagation();
+            openObjectModal(targetId);
         }
-    }, [selectObject]);
+    }, [openObjectModal]);
 
     if (!selectedObject) {
         return (
             <div className="object-view empty">
                 <div className="empty-state">
                     <span className="empty-icon">✦</span>
-                    <h2>Selecciona un objeto</h2>
-                    <p>Elige un elemento de la barra lateral o crea uno nuevo</p>
+                    <h2>Objeto no encontrado</h2>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="object-view" onClick={handleMentionClick}>
+        <div className={`object-view ${isModal ? 'modal-view' : ''}`} onClick={handleMentionClick}>
             <header className="object-header">
                 <div className="object-header-top">
                     <div className="object-type-selector" ref={typeSelectorRef}>
@@ -306,29 +278,33 @@ export const ObjectView = () => {
                     </div>
 
                     <div className="object-actions">
-                        <button
-                            className="action-btn nav"
-                            onClick={goBack}
-                            disabled={!canGoBack}
-                            title="Atrás"
-                        >
-                            ←
-                        </button>
-                        <button
-                            className="action-btn nav"
-                            onClick={goForward}
-                            disabled={!canGoForward}
-                            title="Adelante"
-                        >
-                            →
-                        </button>
-                        <button
-                            className={`action-btn focus ${focusMode ? 'active' : ''}`}
-                            onClick={toggleFocusMode}
-                            title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco (⌘.)'}
-                        >
-                            {focusMode ? '◉' : '○'}
-                        </button>
+                        {!isModal && (
+                            <>
+                                <button
+                                    className="action-btn nav"
+                                    onClick={goBack}
+                                    disabled={!canGoBack}
+                                    title="Atrás"
+                                >
+                                    ←
+                                </button>
+                                <button
+                                    className="action-btn nav"
+                                    onClick={goForward}
+                                    disabled={!canGoForward}
+                                    title="Adelante"
+                                >
+                                    →
+                                </button>
+                                <button
+                                    className={`action-btn focus ${focusMode ? 'active' : ''}`}
+                                    onClick={toggleFocusMode}
+                                    title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco (⌘.)'}
+                                >
+                                    {focusMode ? '◉' : '○'}
+                                </button>
+                            </>
+                        )}
                         <button
                             className="action-btn ai-extract"
                             onClick={() => setShowEntityExtractor(true)}
@@ -340,6 +316,11 @@ export const ObjectView = () => {
                         <button className="action-btn delete" onClick={handleDelete} title="Eliminar">
                             🗑️
                         </button>
+                        {isModal && onClose && (
+                            <button className="action-btn close-modal" onClick={onClose} title="Cerrar">
+                                <X size={20} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -385,15 +366,9 @@ export const ObjectView = () => {
                     object={selectedObject}
                     objectType={objectType}
                     onUpdate={(updates) => updateObject(selectedObject.id, updates)}
-                    onRelationClick={selectObject}
+                    onRelationClick={(id) => openObjectModal(id)}
                 />
             )}
-            {/* AttachmentsPanel hidden - attachments are now Adjunto objects
-            <AttachmentsPanel
-                object={selectedObject}
-                onUpdate={(updates) => updateObject(selectedObject.id, updates)}
-            />
-            */}
 
             <Editor
                 key={selectedObject.id}
@@ -401,7 +376,7 @@ export const ObjectView = () => {
                 content={selectedObject.content}
                 onChange={handleContentChange}
                 onCreateObject={handleCreateObject}
-                onMentionClick={selectObject}
+                onMentionClick={(id) => openObjectModal(id)}
                 placeholder="Empieza a escribir... Usa @tipo/nombre para mencionar o crear objetos"
             />
 
@@ -487,7 +462,6 @@ export const ObjectView = () => {
                 </div>
             )}
 
-
             <ConfirmDialog
                 isOpen={showDeleteConfirm}
                 title="Eliminar objeto"
@@ -501,4 +475,22 @@ export const ObjectView = () => {
             />
         </div>
     );
+};
+
+export const ObjectView = () => {
+    const selectedObject = useSelectedObject();
+
+    if (!selectedObject) {
+        return (
+            <div className="object-view empty">
+                <div className="empty-state">
+                    <span className="empty-icon">✦</span>
+                    <h2>Selecciona un objeto</h2>
+                    <p>Elige un elemento de la barra lateral o crea uno nuevo</p>
+                </div>
+            </div>
+        );
+    }
+
+    return <ObjectViewContent objectId={selectedObject.id} />;
 };
