@@ -77,12 +77,32 @@ export const BrainChat = () => {
                 e.preventDefault();
                 const objectId = href.split(':')[1];
 
-                // Navigate to object
-                pushNavHistory('chat', null);
+                // 1. Try to find by ID
+                let targetObject = useObjectStore.getState().objects.find(o => o.id === objectId);
 
-                // 2. Switch to object view
-                useObjectStore.getState().selectObject(objectId);
-                setCurrentSection('objects');
+                // 2. Fallback: Try to find by Title (if AI hallucinated ID or used Title as ID)
+                if (!targetObject) {
+                    // Check if the "ID" is actually a title
+                    targetObject = useObjectStore.getState().objects.find(o => o.title.toLowerCase() === objectId.toLowerCase());
+                }
+
+                // 3. Fallback: Try to find by Link Text
+                if (!targetObject) {
+                    const linkText = link.textContent?.trim();
+                    if (linkText) {
+                        targetObject = useObjectStore.getState().objects.find(o => o.title.toLowerCase() === linkText.toLowerCase());
+                    }
+                }
+
+                if (targetObject) {
+                    // Navigate to object
+                    pushNavHistory('chat', null);
+                    // Switch to object view
+                    useObjectStore.getState().selectObject(targetObject.id);
+                    setCurrentSection('objects');
+                } else {
+                    toast.error('Objeto no encontrado', 'No se pudo encontrar el objeto vinculado.');
+                }
             }
         }
     };
@@ -95,13 +115,26 @@ export const BrainChat = () => {
         renderer.link = (optionOrHref: any, title?: string, text?: string) => {
             // Check if first arg is an object (Marked 5.x+) or string (older)
             let href = typeof optionOrHref === 'string' ? optionOrHref : optionOrHref?.href;
+            let linkText = typeof optionOrHref === 'string' ? text : optionOrHref?.text;
 
             if (href && href.startsWith('object:')) {
                 const objectId = href.split(':')[1];
-                const obj = objects.find(o => o.id === objectId);
+
+                // 1. Try Find by ID
+                let obj = objects.find(o => o.id === objectId);
+
+                // 2. Fallback: Try Find by Title (if AI used title as ID)
+                if (!obj && objectId) {
+                    obj = objects.find(o => o.title.toLowerCase() === objectId.toLowerCase());
+                }
+
+                // 3. Fallback: Try Find by Link Text
+                if (!obj && linkText) {
+                    obj = objects.find(o => o.title.toLowerCase() === linkText.toLowerCase());
+                }
 
                 if (obj) {
-                    const typeConfig = objectTypes.find(t => t.id === obj.type);
+                    const typeConfig = objectTypes.find(t => t.id === obj?.type);
                     const color = typeConfig?.color || '#a855f7';
                     const typeName = typeConfig?.name?.toUpperCase() || obj.type.toUpperCase();
                     const iconName = typeConfig?.icon || 'FileText';
@@ -113,8 +146,11 @@ export const BrainChat = () => {
                         iconHtml = renderToStaticMarkup(<IconComponent size={14} strokeWidth={2.5} />);
                     }
 
+                    // Update HREF to use the REAL ID if we found it via fallback
+                    const correctHref = `object:${obj.id}`;
+
                     return `
-                        <a href="${href}" class="object-link-pill" title="${obj.title}">
+                        <a href="${correctHref}" class="object-link-pill" title="${obj.title}">
                             <span class="obj-type-badge" style="background-color: ${color}">${typeName}</span>
                             <span class="obj-content">${iconHtml} <span class="obj-text">${obj.title}</span></span>
                         </a>
