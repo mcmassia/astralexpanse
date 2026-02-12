@@ -190,8 +190,11 @@ export const objectToMarkdown = (obj: AstralObject): string => {
             if (innerMatch) innerContent = innerMatch[1];
         }
 
+        // MINIFY: Remove newlines and excess whitespace to prevent Markdown from interpreting indented lines as code blocks
+        innerContent = innerContent.replace(/\n/g, '').replace(/\s+/g, ' ').trim();
+
         // Create readable HTML block
-        const newBlock = `<div data-type="context-block" data-source-id="${sourceId}">\n${innerContent}\n</div>`;
+        const newBlock = `<div data-type="context-block" data-source-id="${sourceId}">${innerContent}</div>`;
 
         contextBlocks.push(newBlock);
         return `__CUSTOM_BLOCK_${contextBlocks.length - 1}__`;
