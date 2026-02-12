@@ -381,6 +381,20 @@ export function EditorToolbar({ editor, linkModalOpen, onLinkModalClose }: Edito
                     >
                         ◇
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const selectedId = useObjectStore.getState().selectedObjectId;
+                            if (selectedId) {
+                                (editor.chain().focus() as any).setContextBlock({ sourceId: selectedId }).run();
+                            } else {
+                                alert('Debes seleccionar un objeto para insertar un bloque de contexto.');
+                            }
+                        }}
+                        title="Insertar bloque de contexto"
+                    >
+                        📑
+                    </button>
                     <div className="toolbar-image-dropdown">
                         <button
                             type="button"

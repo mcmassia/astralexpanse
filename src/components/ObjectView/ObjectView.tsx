@@ -10,8 +10,6 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { ConfirmDialog, useToast, LucideIcon } from '../common';
 import { EntityExtractor } from '../Editor/EntityExtractor';
 import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
-import { getFirestoreDb } from '../../services/firebase';
-import { collectionGroup, query, where, getDocs, limit } from 'firebase/firestore';
 import './ObjectView.css';
 
 
@@ -69,42 +67,33 @@ export const ObjectView = () => {
     const [backlinkContexts, setBacklinkContexts] = useState<Record<string, string[]>>({});
     const [expandedBacklinks, setExpandedBacklinks] = useState<Set<string>>(new Set());
 
-    // Fetch context snippets from search_chunks when selectedObject changes
+    // Fetch context snippets using the unified contextExtractor
     useEffect(() => {
         if (!selectedObject) {
             setBacklinkContexts({});
             return;
         }
 
-        const fetchContexts = async () => {
-            try {
-                const firestore = getFirestoreDb();
-                // Query chunks that mention this object's title
-                const chunksQuery = query(
-                    collectionGroup(firestore, 'search_chunks'),
-                    where('tagsInBlock', 'array-contains', selectedObject.title),
-                    limit(100)
-                );
-                const snap = await getDocs(chunksQuery);
 
-                const contexts: Record<string, string[]> = {};
-                snap.docs.forEach(doc => {
-                    const data = doc.data();
-                    if (!contexts[data.parentId]) contexts[data.parentId] = [];
-                    // Use originalText for clean display, fallback to content
-                    const snippet = data.originalText || data.content || '';
-                    if (snippet && !contexts[data.parentId].includes(snippet)) {
-                        contexts[data.parentId].push(snippet);
+        objects.forEach(obj => {
+            // Check if this object is in the backlinked list
+            // (Optimize: we could just iterate backlinkedObjects, but we need to ensure they have content loaded)
+            if (backlinkedObjects.some(bo => bo.id === obj.id)) {
+                // Use the shared utility to extract rich context
+                // This ensures consistency with the Context Block in the editor
+                // and avoids relying on potentially stale Firestore search_chunks
+                import('../../utils/contextExtractor').then(({ extractContext }) => {
+                    const snippets = extractContext(obj.content, selectedObject.id);
+                    if (snippets.length > 0) {
+                        setBacklinkContexts(prev => ({
+                            ...prev,
+                            [obj.id]: snippets
+                        }));
                     }
                 });
-                setBacklinkContexts(contexts);
-            } catch (err) {
-                console.warn('[ObjectView] Failed to fetch backlink contexts:', err);
             }
-        };
-
-        fetchContexts();
-    }, [selectedObject]);
+        });
+    }, [selectedObject, objects, backlinkedObjects]);
 
     // Toggle handler for "Ver contexto"
     const toggleBacklinkContext = (objectId: string) => {
@@ -468,23 +457,22 @@ export const ObjectView = () => {
                                         {isExpanded && contexts.length > 0 && (
                                             <div className="backlink-contexts">
                                                 {contexts.map((ctx, i) => {
-                                                    // Extract clean text for search/highlight
-                                                    const cleanText = ctx.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                                                    const displayText = cleanText.slice(0, 300) + (cleanText.length > 300 ? '...' : '');
-
                                                     return (
                                                         <blockquote
                                                             key={i}
                                                             className="context-snippet clickable"
                                                             onClick={() => {
-                                                                // Set highlight text (first 50 chars for search)
-                                                                setHighlightSearchText(cleanText.slice(0, 50));
-                                                                // Navigate to the source object
+                                                                // Set highlight text (try to strip HTML for search)
+                                                                const tempDiv = document.createElement('div');
+                                                                tempDiv.innerHTML = ctx;
+                                                                const plainText = tempDiv.textContent || ctx;
+
+                                                                setHighlightSearchText(plainText.slice(0, 50));
                                                                 handleBacklinkClick(obj.id);
                                                             }}
                                                             title="Haz clic para ir a esta referencia"
                                                         >
-                                                            {displayText}
+                                                            <div dangerouslySetInnerHTML={{ __html: ctx }} />
                                                         </blockquote>
                                                     );
                                                 })}

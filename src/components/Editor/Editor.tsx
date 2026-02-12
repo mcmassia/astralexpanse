@@ -15,7 +15,7 @@ import { Typography } from '@tiptap/extension-typography';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
 import { MathExtension } from '@aarkue/tiptap-math-extension';
 import { MermaidBlock } from './MermaidBlock';
-import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading, ObjectLink, CodeBlockPasteHandler } from './extensions';
+import { HashtagNode, HashtagExtension, TaskInlineNode, TaskShortcutExtension, ImageExtension, AttachmentBlock, CollapsibleHeading, ObjectLink, CodeBlockPasteHandler, ContextBlock } from './extensions';
 import { uploadImageToDrive, isDriveConnected } from '../../services/drive';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback, useState } from 'react';
@@ -320,6 +320,7 @@ export const Editor = forwardRef<EditorRef, EditorProps>(({
                 },
             }),
             // Hashtag extensions (#tag)
+            ContextBlock,
             HashtagNode.configure({
                 getObjects: () => objects,
             }),

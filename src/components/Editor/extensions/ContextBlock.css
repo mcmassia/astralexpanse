@@ -1,0 +1,120 @@
+.context-block-wrapper {
+    margin: 1.5rem 0;
+    border: 1px solid var(--border-color, #2a2a3e);
+    border-radius: 8px;
+    background: var(--bg-secondary, #1e1e2e);
+    overflow: hidden;
+    font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.context-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary, #2a2a3e);
+    border-bottom: 1px solid var(--border-color, #3f3f5a);
+}
+
+.context-block-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #9ca3af);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.context-block-count {
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    color: var(--text-muted, #6b7280);
+}
+
+.context-block-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted, #6b7280);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+.context-block-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.context-item {
+    border-bottom: 1px solid var(--border-color, #2a2a3e);
+}
+
+.context-item:last-child {
+    border-bottom: none;
+}
+
+.context-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.context-source-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary, #fff);
+}
+
+.source-title {
+    color: var(--type-color, inherit);
+}
+
+.source-date {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+}
+
+.context-snippets {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary, #d1d5db);
+}
+
+.context-snippet-content {
+    margin-bottom: 0.75rem;
+    position: relative;
+    padding-left: 1rem;
+    border-left: 2px solid var(--type-color, #4f46e5);
+}
+
+.context-snippet-content:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure rich text content inside snippets looks okay */
+.context-snippet-content p {
+    margin: 0.25rem 0;
+}
+
+.context-snippet-content ul,
+.context-snippet-content ol {
+    margin: 0.5rem 0 0.5rem 1.5rem;
+}
+
+.context-snippet-content li {
+    margin-bottom: 0.25rem;
+}
+
+.context-block-wrapper.error {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    padding: 1rem;
+}
