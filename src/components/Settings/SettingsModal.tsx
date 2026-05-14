@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { AISettings } from './AISettings';
+import { DataManagement } from './DataManagement';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -19,6 +20,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </button>
                 <div className="settings-scroll-area">
                     <AISettings />
+                    <DataManagement />
                 </div>
             </div>
         </div>
